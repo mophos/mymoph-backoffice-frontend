@@ -34,6 +34,7 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ],
+              "baseHref": "/backoffice/",
               "optimization": true,
               "outputHashing": "all"
             },
