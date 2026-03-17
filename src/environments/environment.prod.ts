@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiBaseUrl: '/api/v1'
+  apiBaseUrl: 'https://mymoph.moph.go.th/backofficeapi/api/v1'
 };
