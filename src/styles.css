@@ -1,0 +1,27 @@
+:root {
+  --bg: #f4f7f8;
+  --surface: #ffffff;
+  --surface-2: #eef4f2;
+  --text: #1f2b2a;
+  --muted: #5d6f6c;
+  --line: #d9e6e2;
+  --brand: #0f766e;
+  --brand-strong: #0b4f4a;
+  --danger: #b42318;
+  --shadow: 0 10px 30px rgba(15, 42, 36, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans Thai", "Sarabun", sans-serif;
+  background: radial-gradient(circle at 20% 20%, #f7fffd, #eef4f2 55%, #e8f0ee 100%);
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+}
