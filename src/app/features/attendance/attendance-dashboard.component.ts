@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AttendanceService } from './attendance.service';
 
 @Component({
   selector: 'app-attendance-dashboard',
   standalone: true,
-  imports: [NgIf, NgFor, FormsModule, DatePipe],
+  imports: [NgIf, NgFor, FormsModule],
   template: `
     <section class="card">
       <header>
@@ -75,9 +75,9 @@ import { AttendanceService } from './attendance.service';
             <td>{{ row.cid }}</td>
             <td>{{ row.first_name }} {{ row.last_name }}</td>
             <td>{{ row.hospcode }}</td>
-            <td>{{ row.attendance_date | date:'dd MMMM yyyy':'Asia/Bangkok':'th-TH' }}</td>
-            <td>{{ row.check_in_at | date:'short':'Asia/Bangkok' }}</td>
-            <td>{{ row.check_out_at | date:'short':'Asia/Bangkok' }}</td>
+            <td>{{ formatAttendanceDate(row.attendance_date) }}</td>
+            <td>{{ formatAttendanceTime(row.check_in_at) }}</td>
+            <td>{{ formatAttendanceTime(row.check_out_at) }}</td>
           </tr>
         </tbody>
       </table>
@@ -149,10 +149,10 @@ import { AttendanceService } from './attendance.service';
   ]
 })
 export class AttendanceDashboardComponent implements OnInit {
-  from = new Date().toISOString().slice(0, 10);
-  to = new Date().toISOString().slice(0, 10);
-  dailyDate = new Date().toISOString().slice(0, 10);
-  monthlyMonth = new Date().toISOString().slice(0, 7);
+  from = this.getTodayLocalDate();
+  to = this.getTodayLocalDate();
+  dailyDate = this.getTodayLocalDate();
+  monthlyMonth = this.getCurrentLocalMonth();
 
   dashboard: any;
   rows: any[] = [];
@@ -183,7 +183,7 @@ export class AttendanceDashboardComponent implements OnInit {
   }
 
   exportDaily(): void {
-    const date = this.dailyDate || new Date().toISOString().slice(0, 10);
+    const date = this.dailyDate || this.getTodayLocalDate();
     this.attendanceService
       .exportReport({
         reportType: 'daily',
@@ -213,7 +213,7 @@ export class AttendanceDashboardComponent implements OnInit {
   }
 
   exportDailyPdf(): void {
-    const date = this.dailyDate || new Date().toISOString().slice(0, 10);
+    const date = this.dailyDate || this.getTodayLocalDate();
     this.attendanceService
       .exportPdfReport({
         reportType: 'daily',
@@ -243,7 +243,7 @@ export class AttendanceDashboardComponent implements OnInit {
   }
 
   private buildMonthRange(monthInput: string): { monthValue: string; start: string; end: string } | null {
-    const monthValue = monthInput || new Date().toISOString().slice(0, 7);
+    const monthValue = monthInput || this.getCurrentLocalMonth();
     const [yearText, monthText] = monthValue.split('-');
     const year = Number(yearText);
     const month = Number(monthText);
@@ -287,5 +287,47 @@ export class AttendanceDashboardComponent implements OnInit {
 
     const simpleMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
     return simpleMatch?.[1] ?? null;
+  }
+
+  formatAttendanceDate(value: unknown): string {
+    const text = String(value ?? '').trim();
+    if (!text) return '-';
+
+    const dateMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!dateMatch) return '-';
+
+    const [, year, month, day] = dateMatch;
+    return `${day}/${month}/${year}`;
+  }
+
+  formatAttendanceTime(value: unknown): string {
+    const text = String(value ?? '').trim();
+    if (!text) return '-';
+
+    const timeMatch = text.match(/(?:T|\s)(\d{2}):(\d{2})(?::\d{2})?/);
+    if (timeMatch) {
+      return `${timeMatch[1]}:${timeMatch[2]}`;
+    }
+
+    if (/^\d{2}:\d{2}(?::\d{2})?$/.test(text)) {
+      return text.slice(0, 5);
+    }
+
+    return '-';
+  }
+
+  private getTodayLocalDate(): string {
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private getCurrentLocalMonth(): string {
+    const now = new Date();
+    const year = String(now.getFullYear());
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
   }
 }
