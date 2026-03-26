@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../core/auth/auth.service';
 import { AttendanceService } from './attendance.service';
 
 @Component({
@@ -19,7 +20,7 @@ import { AttendanceService } from './attendance.service';
           <div class="filters">
             <label>From <input type="date" [(ngModel)]="from" /></label>
             <label>To <input type="date" [(ngModel)]="to" /></label>
-            <button (click)="load()">Search</button>
+            <button (click)="searchSubmit()">Search</button>
           </div>
         </section>
 
@@ -64,23 +65,36 @@ import { AttendanceService } from './attendance.service';
           <tr>
             <th>CID</th>
             <th>Name</th>
-            <th>Hospcode</th>
+            <th *ngIf="isSuperAdmin">Hospcode</th>
             <th>Date</th>
             <th>Check-in</th>
             <th>Check-out</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let row of rows">
+          <tr
+            *ngFor="let row of rows; let i = index"
+            [class.date-divider]="isFirstRowOfDate(i)"
+            [class.date-group-alt]="isAltDateGroup(i)"
+          >
             <td>{{ row.cid }}</td>
             <td>{{ row.first_name }} {{ row.last_name }}</td>
-            <td>{{ row.hospcode }}</td>
+            <td *ngIf="isSuperAdmin">{{ row.hospcode }}</td>
             <td>{{ formatAttendanceDate(row.attendance_date) }}</td>
             <td>{{ formatAttendanceTime(row.check_in_at) }}</td>
             <td>{{ formatAttendanceTime(row.check_out_at) }}</td>
           </tr>
         </tbody>
       </table>
+
+      <div class="pagination" *ngIf="total > 0">
+        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+        <div class="pager-actions">
+          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+          <span>Page {{ page }} / {{ totalPages }}</span>
+          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+        </div>
+      </div>
     </section>
   `,
   styles: [
@@ -140,15 +154,24 @@ import { AttendanceService } from './attendance.service';
     .summary strong { font-size: 1.2rem; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; font-size: 0.9rem; }
+    tbody tr.date-group-alt td { background: #f4faf8; }
+    tbody tr.date-divider td { border-top: 2px solid #b8d9d1; }
+    .pagination { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .pager-actions { display: flex; align-items: center; gap: 8px; }
     @media (max-width: 980px) {
       .control-grid { grid-template-columns: 1fr; }
       .filters { grid-template-columns: 1fr; }
       .export-list { grid-template-columns: 1fr; }
+      .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
   ]
 })
 export class AttendanceDashboardComponent implements OnInit {
+  page = 1;
+  pageSize = 20;
+  total = 0;
+
   from = this.getTodayLocalDate();
   to = this.getTodayLocalDate();
   dailyDate = this.getTodayLocalDate();
@@ -156,29 +179,83 @@ export class AttendanceDashboardComponent implements OnInit {
 
   dashboard: any;
   rows: any[] = [];
+  rowDateGroupIndexes: number[] = [];
 
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(
+    private readonly attendanceService: AttendanceService,
+    private readonly authService: AuthService
+  ) {}
+
+  get isSuperAdmin(): boolean {
+    return this.authService.currentUser?.roles?.includes('super_admin') ?? false;
+  }
 
   ngOnInit(): void {
     this.load();
   }
 
+  get totalPages(): number {
+    return this.total > 0 ? Math.ceil(this.total / this.pageSize) : 1;
+  }
+
+  get startItem(): number {
+    if (!this.total) return 0;
+    return (this.page - 1) * this.pageSize + 1;
+  }
+
+  get endItem(): number {
+    return Math.min(this.page * this.pageSize, this.total);
+  }
+
+  searchSubmit(): void {
+    this.page = 1;
+    this.load();
+  }
+
+  prevPage(): void {
+    if (this.page <= 1) return;
+    this.page -= 1;
+    this.load();
+  }
+
+  nextPage(): void {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
+    this.load();
+  }
+
   load(): void {
+    const from = this.from;
+    const to = this.to;
+
     this.attendanceService
-      .getDashboard({ from: this.from, to: this.to })
+      .getDashboard({ from, to })
       .subscribe((res: any) => {
         this.dashboard = res.data;
       });
 
     this.attendanceService
       .getRecords({
-        from: this.from,
-        to: this.to,
-        page: 1,
-        pageSize: 20
+        from,
+        to,
+        page: this.page,
+        pageSize: this.pageSize
       })
-      .subscribe((res: any) => {
-        this.rows = res.data?.rows || [];
+      .subscribe({
+        next: (res: any) => {
+          const data = res?.data ?? {};
+          this.total = Number(data.total || 0);
+          this.setRows(Array.isArray(data.rows) ? data.rows : []);
+          if (this.page > this.totalPages) {
+            this.page = this.totalPages;
+            this.load();
+          }
+        },
+        error: () => {
+          this.total = 0;
+          this.setRows([]);
+          alert('ไม่สามารถโหลดรายการลงเวลาได้');
+        }
       });
   }
 
@@ -314,6 +391,79 @@ export class AttendanceDashboardComponent implements OnInit {
     }
 
     return '-';
+  }
+
+  isFirstRowOfDate(index: number): boolean {
+    if (index <= 0) return false;
+    return this.rowDateGroupIndexes[index] !== this.rowDateGroupIndexes[index - 1];
+  }
+
+  isAltDateGroup(index: number): boolean {
+    const groupIndex = this.rowDateGroupIndexes[index] ?? 0;
+    return groupIndex % 2 === 1;
+  }
+
+  private setRows(rows: any[]): void {
+    const sortedRows = this.sortRowsByDateDesc(rows);
+    this.rows = sortedRows;
+    this.rowDateGroupIndexes = this.buildDateGroupIndexes(sortedRows);
+  }
+
+  private sortRowsByDateDesc(rows: any[]): any[] {
+    return [...rows].sort((left: any, right: any) => {
+      const leftDate = this.extractAttendanceDateKey(left?.attendance_date);
+      const rightDate = this.extractAttendanceDateKey(right?.attendance_date);
+      const dateCompare = rightDate.localeCompare(leftDate);
+      if (dateCompare !== 0) return dateCompare;
+
+      const leftTime =
+        this.extractAttendanceTimeSortKey(left?.check_in_at) || this.extractAttendanceTimeSortKey(left?.check_out_at);
+      const rightTime =
+        this.extractAttendanceTimeSortKey(right?.check_in_at) || this.extractAttendanceTimeSortKey(right?.check_out_at);
+      const timeCompare = rightTime.localeCompare(leftTime);
+      if (timeCompare !== 0) return timeCompare;
+
+      const leftCid = String(left?.cid ?? '');
+      const rightCid = String(right?.cid ?? '');
+      return leftCid.localeCompare(rightCid);
+    });
+  }
+
+  private buildDateGroupIndexes(rows: any[]): number[] {
+    let currentGroup = -1;
+    let previousDateKey = '';
+
+    return rows.map((row, index) => {
+      const dateKey = this.extractAttendanceDateKey(row?.attendance_date);
+      if (index === 0 || dateKey !== previousDateKey) {
+        currentGroup += 1;
+        previousDateKey = dateKey;
+      }
+
+      return currentGroup;
+    });
+  }
+
+  private extractAttendanceDateKey(value: unknown): string {
+    const text = String(value ?? '').trim();
+    const dateMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!dateMatch) return '';
+
+    const [, year, month, day] = dateMatch;
+    return `${year}-${month}-${day}`;
+  }
+
+  private extractAttendanceTimeSortKey(value: unknown): string {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+
+    const timeMatch = text.match(/(?:T|\s)?(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (!timeMatch) return '';
+
+    const hour = timeMatch[1];
+    const minute = timeMatch[2];
+    const second = timeMatch[3] || '00';
+    return `${hour}:${minute}:${second}`;
   }
 
   private getTodayLocalDate(): string {
