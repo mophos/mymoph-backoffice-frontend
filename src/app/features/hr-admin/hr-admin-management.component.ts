@@ -23,7 +23,11 @@ interface HrAdminRow {
 
       <div class="toolbar">
         <input [(ngModel)]="search" placeholder="Search by CID, name, email" />
-        <button (click)="load()">Search</button>
+        <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }} / page</option>
+        </select>
+        <button (click)="searchSubmit()">Search</button>
+        <button class="ghost" (click)="resetSearch()">Clear</button>
       </div>
 
       <div class="form-grid">
@@ -51,7 +55,7 @@ interface HrAdminRow {
 
       <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
 
-      <table>
+      <table *ngIf="rows.length; else emptyState">
         <thead>
           <tr>
             <th>CID</th>
@@ -74,6 +78,19 @@ interface HrAdminRow {
           </tr>
         </tbody>
       </table>
+
+      <ng-template #emptyState>
+        <p class="note">ไม่พบข้อมูลผู้ดูแล</p>
+      </ng-template>
+
+      <div class="pagination" *ngIf="total > 0">
+        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+        <div class="pager-actions">
+          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+          <span>Page {{ page }} / {{ totalPages }}</span>
+          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+        </div>
+      </div>
     </section>
   `,
   styles: [
@@ -105,19 +122,26 @@ interface HrAdminRow {
     .table-actions { display: flex; gap: 8px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; font-size: 0.9rem; }
+    .pagination { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .pager-actions { display: flex; align-items: center; gap: 8px; }
     @media (max-width: 1100px) {
       .toolbar, .form-grid { grid-template-columns: 1fr; }
       .actions-bar { flex-direction: column; align-items: flex-start; }
       .table-actions { flex-direction: column; }
       .role-grid { grid-template-columns: 1fr; }
+      .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
   ]
 })
 export class HrAdminManagementComponent implements OnInit {
   readonly roleOptions = ['hr', 'admin_affairs', 'it_office', 'super_admin'];
+  readonly pageSizeOptions = [10, 20, 50];
 
   search = '';
+  page = 1;
+  pageSize = 20;
+  total = 0;
   scopeInput = '';
   editingUserId: string | null = null;
   errorMessage = '';
@@ -137,16 +161,62 @@ export class HrAdminManagementComponent implements OnInit {
     this.load();
   }
 
+  get totalPages(): number {
+    return this.total > 0 ? Math.ceil(this.total / this.pageSize) : 1;
+  }
+
+  get startItem(): number {
+    if (!this.total) return 0;
+    return (this.page - 1) * this.pageSize + 1;
+  }
+
+  get endItem(): number {
+    return Math.min(this.page * this.pageSize, this.total);
+  }
+
   load(): void {
     this.errorMessage = '';
-    this.service.list(this.search).subscribe({
+    this.service.list(this.search, this.page, this.pageSize).subscribe({
       next: (res: any) => {
         this.rows = this.normalizeRows(res.data?.rows || []);
+        this.total = Number(res.data?.total || 0);
+        if (this.page > this.totalPages) {
+          this.page = this.totalPages;
+          this.load();
+        }
       },
       error: (error) => {
         this.errorMessage = this.resolveErrorMessage(error, 'โหลดข้อมูลไม่สำเร็จ');
       }
     });
+  }
+
+  searchSubmit(): void {
+    this.page = 1;
+    this.load();
+  }
+
+  resetSearch(): void {
+    this.search = '';
+    this.page = 1;
+    this.load();
+  }
+
+  onPageSizeChange(): void {
+    this.page = 1;
+    this.load();
+  }
+
+  prevPage(): void {
+    if (this.page <= 1) return;
+    this.page -= 1;
+    this.load();
+  }
+
+  nextPage(): void {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
+    this.load();
   }
 
   toggleRole(roleCode: string, checked: boolean): void {
@@ -234,6 +304,18 @@ export class HrAdminManagementComponent implements OnInit {
   }
 
   private normalizeRows(inputRows: any[]): HrAdminRow[] {
+    const isAlreadyNormalized = inputRows.every((row) => Array.isArray(row?.role_codes));
+    if (isAlreadyNormalized) {
+      return inputRows.map((row) => ({
+        user_id: String(row.user_id ?? ''),
+        cid: String(row.cid ?? ''),
+        first_name: row.first_name ?? undefined,
+        last_name: row.last_name ?? undefined,
+        role_codes: Array.isArray(row.role_codes) ? row.role_codes.map((role: unknown) => String(role)) : [],
+        hospcodes: Array.isArray(row.hospcodes) ? row.hospcodes.map((hospcode: unknown) => String(hospcode)) : []
+      }));
+    }
+
     const grouped = new Map<string, HrAdminRow>();
 
     for (const row of inputRows) {

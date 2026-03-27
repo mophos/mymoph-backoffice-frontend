@@ -10,6 +10,7 @@ import { AttendanceDashboardComponent } from './features/attendance/attendance-d
 import { HrAdminManagementComponent } from './features/hr-admin/hr-admin-management.component';
 import { PersonnelManagementComponent } from './features/personnel/personnel-management.component';
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
+import { TaxManagementComponent } from './features/tax/tax-management.component';
 import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
 
 export const appRoutes: Routes = [
@@ -42,6 +43,12 @@ export const appRoutes: Routes = [
       {
         path: 'payroll',
         component: PayrollPlaceholderComponent,
+        canActivate: [permissionGuard],
+        data: { permission: 'payroll.read' }
+      },
+      {
+        path: 'tax',
+        component: TaxManagementComponent,
         canActivate: [permissionGuard],
         data: { permission: 'payroll.read' }
       },

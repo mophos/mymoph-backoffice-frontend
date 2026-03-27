@@ -7,8 +7,8 @@ import { API_BASE_URL } from '../../core/services/api.config';
 export class HrAdminService {
   constructor(private readonly http: HttpClient) {}
 
-  list(search = ''): Observable<any> {
-    let params = new HttpParams().set('page', 1).set('pageSize', 50);
+  list(search = '', page = 1, pageSize = 20): Observable<any> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
     if (search) params = params.set('search', search);
     return this.http.get(`${API_BASE_URL}/admin/hr-office-admins`, { params, withCredentials: true });
   }
