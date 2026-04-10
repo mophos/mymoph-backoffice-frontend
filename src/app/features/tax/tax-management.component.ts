@@ -417,11 +417,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
   }
 
   get selectedYearShortPreview(): string {
-    const raw = this.createYearForm.yearBe?.trim();
-    if (!raw) return 'YY';
-    const year = Number(raw);
-    if (!Number.isInteger(year)) return 'YY';
-    const yearBe = year < 100 ? 2500 + year : year;
+    const yearBe = this.normalizeYearBe(this.createYearForm.yearBe);
+    if (yearBe === null) return 'YY';
     return String(yearBe % 100).padStart(2, '0');
   }
 
@@ -534,8 +531,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   createYear(): void {
     this.clearMessages();
-    const yearBe = Number(this.createYearForm.yearBe);
-    if (!Number.isInteger(yearBe)) {
+    const yearBe = this.normalizeYearBe(this.createYearForm.yearBe);
+    if (yearBe === null) {
       this.handleError('INVALID_YEAR_BE');
       return;
     }
@@ -994,6 +991,19 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     const filename = String(file.name || '').toLowerCase();
     const mime = String(file.type || '').toLowerCase();
     return mime === 'text/plain' || filename.endsWith('.txt');
+  }
+
+  private normalizeYearBe(input: string | number | null | undefined): number | null {
+    const raw = String(input ?? '').trim();
+    if (!raw) return null;
+
+    const year = Number(raw);
+    if (!Number.isInteger(year) || year < 0) return null;
+
+    const yearBe = year < 100 ? 2500 + year : year;
+    if (yearBe < 2500 || yearBe > 3000) return null;
+
+    return yearBe;
   }
 
   private ensureSelectedYearVisible(): void {
