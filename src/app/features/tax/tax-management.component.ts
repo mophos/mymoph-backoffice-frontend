@@ -551,7 +551,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
             this.page = 1;
             this.activeManageView = 'documents';
           }
-          this.createYearForm.yearBe = '';
+          this.createYearForm.hospcode = '';
           this.loadYears();
         },
         error: (error) => this.handleApiError(error, 'CREATE_TAX_YEAR_FAILED')
