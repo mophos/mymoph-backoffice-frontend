@@ -543,8 +543,14 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
         hospcode: this.createYearForm.hospcode?.trim() || undefined
       })
       .subscribe({
-        next: () => {
+        next: (res) => {
           this.successMessage = 'เพิ่มปี พ.ศ. สำเร็จ';
+          const createdYearId = Number(res?.data?.id ?? 0);
+          if (Number.isInteger(createdYearId) && createdYearId > 0) {
+            this.selectedYearId = createdYearId;
+            this.page = 1;
+            this.activeManageView = 'documents';
+          }
           this.createYearForm.yearBe = '';
           this.loadYears();
         },

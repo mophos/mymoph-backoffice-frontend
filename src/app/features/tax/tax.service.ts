@@ -40,6 +40,13 @@ interface ListDocumentsData {
   rows: TaxDocumentRow[];
 }
 
+export interface CreateTaxYearData {
+  id: number;
+  yearBe: number;
+  yearShort: string;
+  hospcode: string;
+}
+
 export interface IndividualUploadPreviewRow {
   cid: string;
   fileNo: number;
@@ -65,8 +72,8 @@ export class TaxService {
     });
   }
 
-  createYear(payload: { yearBe: number; hospcode?: string }): Observable<ApiEnvelope<unknown>> {
-    return this.http.post<ApiEnvelope<unknown>>(`${API_BASE_URL}/tax/years`, payload, {
+  createYear(payload: { yearBe: number; hospcode?: string }): Observable<ApiEnvelope<CreateTaxYearData>> {
+    return this.http.post<ApiEnvelope<CreateTaxYearData>>(`${API_BASE_URL}/tax/years`, payload, {
       withCredentials: true
     });
   }
