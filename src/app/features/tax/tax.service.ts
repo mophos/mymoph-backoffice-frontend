@@ -40,6 +40,26 @@ interface ListDocumentsData {
   rows: TaxDocumentRow[];
 }
 
+export interface YearlyOverviewRow {
+  cid: string;
+  totalFiles: number;
+  hospcodeCount: number;
+  hospcodes: string;
+  updatedAt: string;
+}
+
+interface ListYearlyOverviewData {
+  year: {
+    id: number;
+    yearBe: number;
+    yearShort: string;
+  };
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: YearlyOverviewRow[];
+}
+
 export interface CreateTaxYearData {
   id: number;
   yearBe: number;
@@ -66,8 +86,14 @@ export interface BatchUploadPreviewRow {
 export class TaxService {
   constructor(private readonly http: HttpClient) {}
 
-  listYears(): Observable<ApiEnvelope<TaxYearRow[]>> {
+  listYears(hospcodeSearch?: string): Observable<ApiEnvelope<TaxYearRow[]>> {
+    let params = new HttpParams();
+    if (hospcodeSearch) {
+      params = params.set('hospcode', hospcodeSearch);
+    }
+
     return this.http.get<ApiEnvelope<TaxYearRow[]>>(`${API_BASE_URL}/tax/years`, {
+      params,
       withCredentials: true
     });
   }
@@ -106,6 +132,27 @@ export class TaxService {
       params: httpParams,
       withCredentials: true
     });
+  }
+
+  listYearlyOverview(params: {
+    yearId: number;
+    search?: string;
+    page: number;
+    pageSize: number;
+  }): Observable<ApiEnvelope<ListYearlyOverviewData>> {
+    let httpParams = new HttpParams().set('page', params.page).set('pageSize', params.pageSize);
+
+    if (params.search) {
+      httpParams = httpParams.set('search', params.search);
+    }
+
+    return this.http.get<ApiEnvelope<ListYearlyOverviewData>>(
+      `${API_BASE_URL}/tax/years/${params.yearId}/yearly-overview`,
+      {
+        params: httpParams,
+        withCredentials: true
+      }
+    );
   }
 
   uploadIndividual(yearId: number, items: Array<{ cid: string; file: File }>): Observable<ApiEnvelope<{ createdCount: number }>> {

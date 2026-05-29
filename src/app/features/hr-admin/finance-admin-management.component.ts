@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HrAdminService } from './hr-admin.service';
+import { FinanceAdminService } from './finance-admin.service';
 
-interface HrAdminRow {
+interface FinanceAdminRow {
   user_id: string;
   cid: string;
   first_name?: string;
@@ -13,13 +13,13 @@ interface HrAdminRow {
 }
 
 @Component({
-  selector: 'app-hr-admin-management',
+  selector: 'app-finance-admin-management',
   standalone: true,
   imports: [NgFor, NgIf, FormsModule],
   template: `
     <section class="card">
-      <h2>HR Office Admin Management</h2>
-      <p class="note">ผู้ใช้ 1 คนกำหนดได้หลาย role พร้อมกำหนด Hospcodes ได้</p>
+      <h2>Finance Office Admin Management</h2>
+      <p class="note">หน้านี้จัดการเฉพาะสิทธิ์ admin_affairs เท่านั้น</p>
 
       <div class="toolbar">
         <input [(ngModel)]="search" placeholder="Search by CID, name, email" />
@@ -32,18 +32,6 @@ interface HrAdminRow {
 
       <div class="form-grid">
         <input [(ngModel)]="form.cid" placeholder="CID" />
-
-        <div class="role-grid">
-          <label *ngFor="let role of roleOptions">
-            <input
-              type="checkbox"
-              [checked]="form.roleCodes.includes(role)"
-              (change)="toggleRole(role, $any($event.target).checked)"
-            />
-            <span>{{ role }}</span>
-          </label>
-        </div>
-
         <input [(ngModel)]="scopeInput" placeholder="Hospcodes (comma separated)" />
         <button (click)="save()">{{ editingUserId ? 'Update' : 'Save' }}</button>
       </div>
@@ -80,7 +68,7 @@ interface HrAdminRow {
       </table>
 
       <ng-template #emptyState>
-        <p class="note">ไม่พบข้อมูลผู้ดูแล</p>
+        <p class="note">ไม่พบข้อมูลผู้ดูแลการเงิน</p>
       </ng-template>
 
       <div class="pagination" *ngIf="total > 0">
@@ -100,21 +88,6 @@ interface HrAdminRow {
     .error { margin: 6px 0 14px; color: var(--danger); font-size: 0.92rem; }
     .toolbar, .form-grid { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
     input, select { padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
-    .role-grid {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(120px, 1fr));
-      gap: 6px;
-      align-content: start;
-    }
-    .role-grid label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
-    }
     button { border: 0; background: var(--brand); color: #fff; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
     button.ghost { border: 1px solid var(--line); background: transparent; color: inherit; }
     button.danger { background: var(--danger); }
@@ -128,14 +101,12 @@ interface HrAdminRow {
       .toolbar, .form-grid { grid-template-columns: 1fr; }
       .actions-bar { flex-direction: column; align-items: flex-start; }
       .table-actions { flex-direction: column; }
-      .role-grid { grid-template-columns: 1fr; }
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
   ]
 })
-export class HrAdminManagementComponent implements OnInit {
-  readonly roleOptions = ['hr', 'admin_affairs', 'it_office', 'super_admin', 'super_admin_affairs'];
+export class FinanceAdminManagementComponent implements OnInit {
   readonly pageSizeOptions = [10, 20, 50];
 
   search = '';
@@ -145,17 +116,15 @@ export class HrAdminManagementComponent implements OnInit {
   scopeInput = '';
   editingUserId: string | null = null;
   errorMessage = '';
-  rows: HrAdminRow[] = [];
+  rows: FinanceAdminRow[] = [];
 
   form: {
     cid: string;
-    roleCodes: string[];
   } = {
-    cid: '',
-    roleCodes: ['hr']
+    cid: ''
   };
 
-  constructor(private readonly service: HrAdminService) {}
+  constructor(private readonly service: FinanceAdminService) {}
 
   ngOnInit(): void {
     this.load();
@@ -219,28 +188,11 @@ export class HrAdminManagementComponent implements OnInit {
     this.load();
   }
 
-  toggleRole(roleCode: string, checked: boolean): void {
-    const current = new Set(this.form.roleCodes);
-    if (checked) {
-      current.add(roleCode);
-    } else {
-      current.delete(roleCode);
-    }
-    this.form.roleCodes = [...current];
-  }
-
   save(): void {
     this.errorMessage = '';
 
-    const selectedRoles = [...new Set(this.form.roleCodes)];
-    if (!selectedRoles.length) {
-      this.errorMessage = 'กรุณาเลือกอย่างน้อย 1 role';
-      return;
-    }
-
     const payload = {
       cid: this.form.cid,
-      roleCodes: selectedRoles,
       hospcodes: this.scopeInput
         .split(',')
         .map((code) => code.trim())
@@ -271,12 +223,11 @@ export class HrAdminManagementComponent implements OnInit {
     });
   }
 
-  startEdit(row: HrAdminRow): void {
+  startEdit(row: FinanceAdminRow): void {
     this.errorMessage = '';
     this.editingUserId = row.user_id;
     this.form = {
-      cid: row.cid,
-      roleCodes: [...row.role_codes]
+      cid: row.cid
     };
     this.scopeInput = row.hospcodes.join(', ');
   }
@@ -297,13 +248,12 @@ export class HrAdminManagementComponent implements OnInit {
 
   private resetForm(): void {
     this.form = {
-      cid: '',
-      roleCodes: ['hr']
+      cid: ''
     };
     this.scopeInput = '';
   }
 
-  private normalizeRows(inputRows: any[]): HrAdminRow[] {
+  private normalizeRows(inputRows: any[]): FinanceAdminRow[] {
     const isAlreadyNormalized = inputRows.every((row) => Array.isArray(row?.role_codes));
     if (isAlreadyNormalized) {
       return inputRows.map((row) => ({
@@ -316,58 +266,47 @@ export class HrAdminManagementComponent implements OnInit {
       }));
     }
 
-    const grouped = new Map<string, HrAdminRow>();
+    const grouped = new Map<string, FinanceAdminRow>();
 
-    for (const row of inputRows) {
-      const key = String(row.user_id);
-      const current: HrAdminRow = grouped.get(key) ?? {
-        user_id: key,
-        cid: String(row.cid ?? ''),
-        first_name: row.first_name ?? undefined,
-        last_name: row.last_name ?? undefined,
-        role_codes: [],
-        hospcodes: []
-      };
+    inputRows.forEach((row) => {
+      const userId = String(row.user_id ?? '');
+      if (!userId) return;
 
-      if (row.role_code && !current.role_codes.includes(row.role_code)) {
-        current.role_codes.push(String(row.role_code));
+      const found = grouped.get(userId);
+      if (!found) {
+        grouped.set(userId, {
+          user_id: userId,
+          cid: String(row.cid ?? ''),
+          first_name: row.first_name ?? undefined,
+          last_name: row.last_name ?? undefined,
+          role_codes: row.role_code ? [String(row.role_code)] : [],
+          hospcodes: Array.isArray(row.hospcodes) ? row.hospcodes.map((hospcode: unknown) => String(hospcode)) : []
+        });
+        return;
       }
 
-      const hospcodes = Array.isArray(row.hospcodes) ? row.hospcodes : [];
-      for (const hospcode of hospcodes) {
-        const value = String(hospcode);
-        if (value && !current.hospcodes.includes(value)) {
-          current.hospcodes.push(value);
-        }
+      const roleCode = row.role_code ? String(row.role_code) : null;
+      if (roleCode && !found.role_codes.includes(roleCode)) {
+        found.role_codes.push(roleCode);
       }
-
-      grouped.set(key, current);
-    }
+    });
 
     return [...grouped.values()];
   }
 
   private resolveErrorMessage(error: any, fallbackMessage: string): string {
-    const code = error?.error?.error;
-    const missingHospcodes = error?.error?.missingHospcodes;
-    const missingRoleCodes = error?.error?.missingRoleCodes;
+    const code = error?.error?.error || error?.error?.message;
+    if (!code) return fallbackMessage;
 
-    if (code === 'INVALID_HOSPCODE' && Array.isArray(missingHospcodes) && missingHospcodes.length) {
-      return `Hospcode ไม่ถูกต้อง/ไม่มีในระบบ: ${missingHospcodes.join(', ')}`;
-    }
+    const map: Record<string, string> = {
+      INVALID_HOSPCODE: 'มี Hospcode ไม่ถูกต้อง',
+      TARGET_SCOPE_OUT_OF_BOUND: 'มี Hospcode ที่อยู่นอก scope ของผู้ใช้ปัจจุบัน',
+      USER_NOT_FOUND: 'ไม่พบผู้ใช้ที่ต้องการแก้ไข',
+      ROLE_NOT_FOUND: 'ไม่พบ role ที่ต้องการ',
+      FORBIDDEN: 'ไม่มีสิทธิ์ใช้งานหน้านี้'
+    };
 
-    if (code === 'ROLE_NOT_FOUND' && Array.isArray(missingRoleCodes) && missingRoleCodes.length) {
-      return `Role ไม่ถูกต้อง/ไม่มีในระบบ: ${missingRoleCodes.join(', ')}`;
-    }
-
-    if (code === 'TARGET_SCOPE_OUT_OF_BOUND' && Array.isArray(error?.error?.deniedHospcodes)) {
-      return `Hospcode อยู่นอก scope ของผู้ใช้งาน: ${error.error.deniedHospcodes.join(', ')}`;
-    }
-
-    if (typeof code === 'string' && code.length) {
-      return `Error: ${code}`;
-    }
-
-    return fallbackMessage;
+    return map[code] ?? `เกิดข้อผิดพลาด: ${code}`;
   }
 }
+

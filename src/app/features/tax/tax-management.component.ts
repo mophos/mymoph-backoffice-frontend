@@ -7,7 +7,8 @@ import {
   IndividualUploadPreviewRow,
   TaxDocumentRow,
   TaxService,
-  TaxYearRow
+  TaxYearRow,
+  YearlyOverviewRow
 } from './tax.service';
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -27,7 +28,7 @@ interface IndividualPreviewItem extends IndividualUploadPreviewRow {
 }
 
 type UploadPreviewMode = 'individual' | 'batch';
-type ManageViewMode = 'documents' | 'upload';
+type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
 
 @Component({
   selector: 'app-tax-management',
@@ -55,6 +56,17 @@ type ManageViewMode = 'documents' | 'upload';
         <strong>เกิดข้อผิดพลาด:</strong> {{ errorMessage }}
       </div>
       <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
+
+      <div class="year-filter">
+        <input
+          [(ngModel)]="yearHospcodeSearch"
+          maxlength="10"
+          placeholder="ค้นหา Hospcode ในรายการปี"
+          (keyup.enter)="searchYearByHospcode()"
+        />
+        <button (click)="searchYearByHospcode()">ค้นหา</button>
+        <button class="ghost" (click)="resetYearHospcodeSearch()">ล้าง</button>
+      </div>
 
       <table class="compact-table" *ngIf="years.length; else emptyYear">
         <thead>
@@ -114,6 +126,14 @@ type ManageViewMode = 'documents' | 'upload';
             (click)="setManageView('upload')"
           >
             อัปโหลด
+          </button>
+          <button
+            *ngIf="canViewYearlyOverview"
+            class="ghost"
+            [class.active]="activeManageView === 'yearly-overview'"
+            (click)="setManageView('yearly-overview')"
+          >
+            ข้อมูลทุกคนรายปี
           </button>
         </div>
       </div>
@@ -279,6 +299,58 @@ type ManageViewMode = 'documents' | 'upload';
           </div>
         </div>
       </div>
+
+      <div *ngIf="activeManageView === 'yearly-overview'">
+        <div class="toolbar">
+          <input
+            [(ngModel)]="yearlyOverviewSearch"
+            placeholder="ค้นหาเลขบัตร / Hospcode / ชื่อไฟล์"
+            (keyup.enter)="searchYearlyOverview()"
+          />
+          <button (click)="searchYearlyOverview()">ค้นหา</button>
+          <button class="ghost" (click)="resetYearlyOverviewSearch()">ล้าง</button>
+        </div>
+
+        <table class="compact-table" *ngIf="yearlyOverviewRows.length; else emptyYearlyOverview">
+          <thead>
+            <tr>
+              <th>เลขบัตร</th>
+              <th>จำนวนไฟล์</th>
+              <th>จำนวนหน่วยงาน</th>
+              <th>Hospcode ที่พบ</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of yearlyOverviewRows">
+              <td>{{ row.cid }}</td>
+              <td>{{ row.totalFiles }}</td>
+              <td>{{ row.hospcodeCount }}</td>
+              <td>{{ row.hospcodes || '-' }}</td>
+              <td>{{ row.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <ng-template #emptyYearlyOverview>
+          <p class="empty">ไม่พบข้อมูลรายปีตามเงื่อนไขที่ค้นหา</p>
+        </ng-template>
+
+        <div class="pagination" *ngIf="yearlyOverviewTotal > 0">
+          <span>Showing {{ yearlyOverviewStartItem }}-{{ yearlyOverviewEndItem }} of {{ yearlyOverviewTotal }}</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="yearlyOverviewPage <= 1" (click)="prevYearlyOverviewPage()">Prev</button>
+            <span>Page {{ yearlyOverviewPage }} / {{ yearlyOverviewTotalPages }}</span>
+            <button
+              class="ghost"
+              [disabled]="yearlyOverviewPage >= yearlyOverviewTotalPages"
+              (click)="nextYearlyOverviewPage()"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   `,
   styles: [
@@ -310,6 +382,7 @@ type ManageViewMode = 'documents' | 'upload';
     .view-switch button.active { background: var(--brand); color: #fff; border-color: var(--brand); }
     .actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
     .year-create { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 6px; margin-bottom: 8px; }
+    .year-filter { display: grid; grid-template-columns: minmax(180px, 240px) auto auto; gap: 6px; margin-bottom: 8px; }
     .upload-grid { display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 8px; margin-bottom: 8px; }
     .upload-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface-2); display: grid; gap: 6px; }
     .preview-box { border: 1px dashed #9db7b0; border-radius: 10px; padding: 10px; background: #f4faf8; display: grid; gap: 6px; margin-bottom: 8px; }
@@ -332,6 +405,7 @@ type ManageViewMode = 'documents' | 'upload';
       .view-switch { width: 100%; }
       .view-switch button { flex: 1; text-align: center; }
       .year-create { grid-template-columns: 1fr; }
+      .year-filter { grid-template-columns: 1fr; }
       .upload-grid { grid-template-columns: 1fr; }
       .person-row { grid-template-columns: 1fr; }
       .toolbar { grid-template-columns: 1fr; }
@@ -354,8 +428,11 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   canManage = false;
   isSuperAdmin = false;
+  canViewYearlyOverview = false;
   requiresHospcodeInput = false;
   scopeHospcodes: string[] = [];
+  yearHospcodeSearch = '';
+  yearHospcodeFilter = '';
 
   individualRows: IndividualUploadRow[] = [{ cid: '', file: null }];
   batchPdfFile: File | null = null;
@@ -381,6 +458,11 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
   page = 1;
   pageSize = 20;
   total = 0;
+  yearlyOverviewRows: YearlyOverviewRow[] = [];
+  yearlyOverviewSearch = '';
+  yearlyOverviewPage = 1;
+  yearlyOverviewPageSize = 20;
+  yearlyOverviewTotal = 0;
 
   errorMessage = '';
   successMessage = '';
@@ -394,6 +476,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUser;
     this.canManage = this.authService.hasPermission('payroll.export');
     this.isSuperAdmin = user?.roles?.includes('super_admin') ?? false;
+    this.canViewYearlyOverview =
+      (user?.roles?.includes('super_admin') ?? false) || (user?.roles?.includes('super_admin_affairs') ?? false);
     this.scopeHospcodes = user?.hospcodes ?? [];
     this.requiresHospcodeInput = this.isSuperAdmin || (user?.scopeType === 'LIST' && this.scopeHospcodes.length !== 1);
 
@@ -501,8 +585,21 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     return Math.min(this.page * this.pageSize, this.total);
   }
 
+  get yearlyOverviewTotalPages(): number {
+    return this.yearlyOverviewTotal > 0 ? Math.ceil(this.yearlyOverviewTotal / this.yearlyOverviewPageSize) : 1;
+  }
+
+  get yearlyOverviewStartItem(): number {
+    if (!this.yearlyOverviewTotal) return 0;
+    return (this.yearlyOverviewPage - 1) * this.yearlyOverviewPageSize + 1;
+  }
+
+  get yearlyOverviewEndItem(): number {
+    return Math.min(this.yearlyOverviewPage * this.yearlyOverviewPageSize, this.yearlyOverviewTotal);
+  }
+
   loadYears(): void {
-      this.taxService.listYears().subscribe({
+    this.taxService.listYears(this.yearHospcodeFilter || undefined).subscribe({
       next: (res) => {
         this.years = res.data || [];
         if (this.yearPage > this.yearTotalPages) {
@@ -513,6 +610,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
           this.selectedYearId = null;
           this.documents = [];
           this.total = 0;
+          this.yearlyOverviewRows = [];
+          this.yearlyOverviewTotal = 0;
           this.clearUploadPreview(true);
           return;
         }
@@ -523,10 +622,23 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
         }
 
         this.ensureSelectedYearVisible();
-        this.loadDocuments();
+        this.loadSelectedManageViewData();
       },
       error: (error) => this.handleApiError(error, 'LOAD_TAX_YEARS_FAILED')
     });
+  }
+
+  searchYearByHospcode(): void {
+    this.yearHospcodeFilter = this.yearHospcodeSearch.trim();
+    this.yearPage = 1;
+    this.loadYears();
+  }
+
+  resetYearHospcodeSearch(): void {
+    this.yearHospcodeSearch = '';
+    this.yearHospcodeFilter = '';
+    this.yearPage = 1;
+    this.loadYears();
   }
 
   createYear(): void {
@@ -581,14 +693,18 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     this.clearMessages();
     this.clearUploadPreview(true);
     this.selectedYearId = yearId;
-    this.activeManageView = 'documents';
     this.ensureSelectedYearVisible();
     this.page = 1;
-    this.loadDocuments();
+    this.yearlyOverviewPage = 1;
+    this.loadSelectedManageViewData();
   }
 
   setManageView(view: ManageViewMode): void {
+    if (view === 'yearly-overview' && !this.canViewYearlyOverview) {
+      return;
+    }
     this.activeManageView = view;
+    this.loadSelectedManageViewData();
   }
 
   prevYearPage(): void {
@@ -821,6 +937,39 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     void this.openBatchSplitPreviewAsync(item);
   }
 
+  private loadSelectedManageViewData(): void {
+    if (this.activeManageView === 'yearly-overview') {
+      this.loadYearlyOverview();
+      return;
+    }
+
+    this.loadDocuments();
+  }
+
+  loadYearlyOverview(): void {
+    if (!this.selectedYearId) return;
+    if (!this.canViewYearlyOverview) return;
+
+    this.taxService
+      .listYearlyOverview({
+        yearId: this.selectedYearId,
+        search: this.yearlyOverviewSearch.trim() || undefined,
+        page: this.yearlyOverviewPage,
+        pageSize: this.yearlyOverviewPageSize
+      })
+      .subscribe({
+        next: (res) => {
+          this.yearlyOverviewRows = res.data?.rows || [];
+          this.yearlyOverviewTotal = Number(res.data?.total || 0);
+          if (this.yearlyOverviewPage > this.yearlyOverviewTotalPages) {
+            this.yearlyOverviewPage = this.yearlyOverviewTotalPages;
+            this.loadYearlyOverview();
+          }
+        },
+        error: (error) => this.handleApiError(error, 'LOAD_TAX_YEARLY_OVERVIEW_FAILED')
+      });
+  }
+
   loadDocuments(): void {
     if (!this.selectedYearId) return;
 
@@ -842,6 +991,31 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
         },
         error: (error) => this.handleApiError(error, 'LOAD_TAX_DOCUMENTS_FAILED')
       });
+  }
+
+  searchYearlyOverview(): void {
+    this.activeManageView = 'yearly-overview';
+    this.yearlyOverviewPage = 1;
+    this.loadYearlyOverview();
+  }
+
+  resetYearlyOverviewSearch(): void {
+    this.activeManageView = 'yearly-overview';
+    this.yearlyOverviewSearch = '';
+    this.yearlyOverviewPage = 1;
+    this.loadYearlyOverview();
+  }
+
+  prevYearlyOverviewPage(): void {
+    if (this.yearlyOverviewPage <= 1) return;
+    this.yearlyOverviewPage -= 1;
+    this.loadYearlyOverview();
+  }
+
+  nextYearlyOverviewPage(): void {
+    if (this.yearlyOverviewPage >= this.yearlyOverviewTotalPages) return;
+    this.yearlyOverviewPage += 1;
+    this.loadYearlyOverview();
   }
 
   searchSubmit(): void {
@@ -1077,6 +1251,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
       TAX_YEAR_NOT_FOUND: 'ไม่พบปี พ.ศ. ที่เลือก',
       TAX_DOCUMENT_NOT_FOUND: 'ไม่พบรายการไฟล์',
       SCOPE_FORBIDDEN: 'ไม่มีสิทธิ์เข้าถึงข้อมูลหน่วยงานนี้',
+      FORBIDDEN: 'ไม่มีสิทธิ์เข้าถึงข้อมูลส่วนนี้',
       INVALID_CID: 'เลขบัตรต้องเป็นตัวเลข 13 หลัก',
       CID_OR_FILE_MISSING: 'กรุณากรอกเลขบัตรและเลือกไฟล์ให้ครบทุกแถว',
       NO_UPLOAD_ITEMS: 'กรุณาเพิ่มรายการที่จะอัปโหลดอย่างน้อย 1 รายการ',

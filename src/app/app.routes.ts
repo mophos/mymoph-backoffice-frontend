@@ -8,6 +8,7 @@ import { UnauthorizedComponent } from './features/shared/unauthorized.component'
 import { NotFoundComponent } from './features/shared/not-found.component';
 import { AttendanceDashboardComponent } from './features/attendance/attendance-dashboard.component';
 import { HrAdminManagementComponent } from './features/hr-admin/hr-admin-management.component';
+import { FinanceAdminManagementComponent } from './features/hr-admin/finance-admin-management.component';
 import { PersonnelManagementComponent } from './features/personnel/personnel-management.component';
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
 import { TaxManagementComponent } from './features/tax/tax-management.component';
@@ -33,6 +34,12 @@ export const appRoutes: Routes = [
         component: HrAdminManagementComponent,
         canActivate: [permissionGuard],
         data: { permission: 'user_admin.manage' }
+      },
+      {
+        path: 'finance-admin',
+        component: FinanceAdminManagementComponent,
+        canActivate: [permissionGuard],
+        data: { permission: 'finance_admin.manage' }
       },
       {
         path: 'personnel',
