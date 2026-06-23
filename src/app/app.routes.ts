@@ -1,6 +1,9 @@
-import { Routes } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { Router, Routes, type CanActivateFn } from '@angular/router';
+import { map } from 'rxjs/operators';
 import { authGuard } from './core/guards/auth.guard';
 import { permissionGuard } from './core/guards/permission.guard';
+import { AuthService } from './core/auth/auth.service';
 import { ShellComponent } from './layout/shell.component';
 import { LoginComponent } from './features/auth/login.component';
 import { AuthCallbackComponent } from './features/auth/auth-callback.component';
@@ -13,6 +16,17 @@ import { PersonnelManagementComponent } from './features/personnel/personnel-man
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
 import { TaxManagementComponent } from './features/tax/tax-management.component';
 import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
+
+@Component({ standalone: true, template: '' })
+class EmptyComponent {}
+
+const defaultRouteGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+  return authService.ensureSession().pipe(
+    map(() => router.createUrlTree([authService.getDefaultRoute()]))
+  );
+};
 
 export const appRoutes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -65,7 +79,12 @@ export const appRoutes: Routes = [
         canActivate: [permissionGuard],
         data: { permission: 'office_settings.read' }
       },
-      { path: '', pathMatch: 'full', redirectTo: 'attendance' }
+      {
+        path: '',
+        pathMatch: 'full',
+        canActivate: [defaultRouteGuard],
+        component: EmptyComponent
+      }
     ]
   },
   { path: '**', component: NotFoundComponent }

@@ -15,7 +15,11 @@ import { AuthService } from '../../core/auth/auth.service';
 export class AuthCallbackComponent {
   constructor(private readonly authService: AuthService, private readonly router: Router) {
     this.authService.handleCallback().subscribe((ok) => {
-      this.router.navigate([ok ? '/attendance' : '/login']);
+      if (!ok) {
+        this.router.navigate(['/login']);
+        return;
+      }
+      this.router.navigate([this.authService.getDefaultRoute()]);
     });
   }
 }

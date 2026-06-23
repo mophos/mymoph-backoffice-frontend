@@ -53,7 +53,7 @@ export class AuthService {
     localStorage.removeItem('bo_access_token');
 
     this.http
-      .get<ApiEnvelope<{ authorizationUrl: string }>>(`${API_BASE_URL}/auth/login-url?returnTo=/attendance`, {
+      .get<ApiEnvelope<{ authorizationUrl: string }>>(`${API_BASE_URL}/auth/login-url`, {
         withCredentials: true
       })
       .subscribe({
@@ -119,5 +119,13 @@ export class AuthService {
     const user = this.userSubject.value;
     if (!user) return false;
     return user.permissions.includes(permission);
+  }
+
+  getDefaultRoute(): string {
+    const user = this.userSubject.value;
+    if (user?.menus?.length) {
+      return user.menus[0].path;
+    }
+    return '/unauthorized';
   }
 }
