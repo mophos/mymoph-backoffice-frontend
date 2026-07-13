@@ -16,6 +16,7 @@ import { PersonnelManagementComponent } from './features/personnel/personnel-man
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
 import { TaxManagementComponent } from './features/tax/tax-management.component';
 import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
+import { MymophUsersManagementComponent } from './features/mymoph-users/mymoph-users-management.component';
 
 @Component({ standalone: true, template: '' })
 class EmptyComponent {}
@@ -54,6 +55,12 @@ export const appRoutes: Routes = [
         component: FinanceAdminManagementComponent,
         canActivate: [permissionGuard],
         data: { permission: 'finance_admin.manage' }
+      },
+      {
+        path: 'mymoph-users',
+        component: MymophUsersManagementComponent,
+        canActivate: [permissionGuard],
+        data: { permission: 'mymoph_user.read' }
       },
       {
         path: 'personnel',

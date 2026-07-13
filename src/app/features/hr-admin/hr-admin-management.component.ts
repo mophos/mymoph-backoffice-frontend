@@ -135,7 +135,7 @@ interface HrAdminRow {
   ]
 })
 export class HrAdminManagementComponent implements OnInit {
-  readonly roleOptions = ['hr', 'admin_affairs', 'it_office', 'super_admin', 'super_admin_affairs'];
+  readonly roleOptions = ['hr', 'admin_affairs', 'it_office', 'super_admin', 'super_admin_affairs', 'user_mymoph'];
   readonly pageSizeOptions = [10, 20, 50];
 
   search = '';
