@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PDFDocument } from 'pdf-lib';
 import {
@@ -32,326 +32,370 @@ type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
 
 @Component({
     selector: 'app-tax-management',
-    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    imports: [FormsModule, DatePipe],
     template: `
     <section class="card">
       <h2>ใบรับรองภาษี (Tax)</h2>
       <p class="note">ใช้สิทธิ์เดียวกับ Payroll | ชื่อไฟล์มาตรฐาน: {{ selectedYearShortPreview }}_เลขบัตร_ลำดับ.pdf</p>
-
-      <div class="year-create" *ngIf="canManage">
-        <input type="number" [(ngModel)]="createYearForm.yearBe" placeholder="ปี พ.ศ. เช่น 2568 หรือ 68" />
-        <input
-          *ngIf="requiresHospcodeInput"
-          [(ngModel)]="createYearForm.hospcode"
-          maxlength="10"
-          placeholder="Hospcode"
-        />
-        <button (click)="createYear()">เพิ่มปี พ.ศ.</button>
-      </div>
-
-      <p class="note" *ngIf="!canManage">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ payroll.export)</p>
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-      <div class="error-banner" *ngIf="errorMessage">
-        <strong>เกิดข้อผิดพลาด:</strong> {{ errorMessage }}
-      </div>
-      <p class="success" *ngIf="successMessage">{{ successMessage }}</p>
-
+    
+      @if (canManage) {
+        <div class="year-create">
+          <input type="number" [(ngModel)]="createYearForm.yearBe" placeholder="ปี พ.ศ. เช่น 2568 หรือ 68" />
+          @if (requiresHospcodeInput) {
+            <input
+              [(ngModel)]="createYearForm.hospcode"
+              maxlength="10"
+              placeholder="Hospcode"
+              />
+          }
+          <button (click)="createYear()">เพิ่มปี พ.ศ.</button>
+        </div>
+      }
+    
+      @if (!canManage) {
+        <p class="note">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ payroll.export)</p>
+      }
+      @if (errorMessage) {
+        <p class="error">{{ errorMessage }}</p>
+      }
+      @if (errorMessage) {
+        <div class="error-banner">
+          <strong>เกิดข้อผิดพลาด:</strong> {{ errorMessage }}
+        </div>
+      }
+      @if (successMessage) {
+        <p class="success">{{ successMessage }}</p>
+      }
+    
       <div class="year-filter">
         <input
           [(ngModel)]="yearHospcodeSearch"
           maxlength="10"
           placeholder="ค้นหา Hospcode ในรายการปี"
           (keyup.enter)="searchYearByHospcode()"
-        />
+          />
         <button (click)="searchYearByHospcode()">ค้นหา</button>
         <button class="ghost" (click)="resetYearHospcodeSearch()">ล้าง</button>
       </div>
-
-      <table class="compact-table" *ngIf="years.length; else emptyYear">
-        <thead>
-          <tr>
-            <th>ปี พ.ศ.</th>
-            <th>Hospcode</th>
-            <th>จำนวนไฟล์</th>
-            <th>Updated</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let year of pagedYears" [class.selected]="selectedYearId === year.id">
-            <td>{{ year.yearBe }}</td>
-            <td>{{ year.hospcode }}</td>
-            <td>{{ year.documentCount }}</td>
-            <td>{{ year.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-            <td class="actions">
-              <button class="ghost" (click)="selectYear(year.id)">เปิด</button>
-              <ng-container *ngIf="canManage">
-                <button class="danger" (click)="deleteYear(year)">ลบ</button>
-              </ng-container>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <ng-template #emptyYear>
-        <p class="empty">ยังไม่มีปี พ.ศ. สำหรับโมดูลภาษี</p>
-      </ng-template>
-
-      <div class="pagination" *ngIf="yearTotal > 0">
-        <span>Showing {{ yearStartItem }}-{{ yearEndItem }} of {{ yearTotal }}</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="yearPage <= 1" (click)="prevYearPage()">Prev</button>
-          <span>Page {{ yearPage }} / {{ yearTotalPages }}</span>
-          <button class="ghost" [disabled]="yearPage >= yearTotalPages" (click)="nextYearPage()">Next</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" *ngIf="selectedYearId">
-      <div class="manage-head">
-        <h3>จัดการปี {{ selectedYear?.yearBe }} ({{ selectedYear?.hospcode }})</h3>
-        <div class="view-switch">
-          <button
-            class="ghost"
-            [class.active]="activeManageView === 'documents'"
-            (click)="setManageView('documents')"
-          >
-            รายการเอกสาร
-          </button>
-          <button
-            *ngIf="canManage"
-            class="ghost"
-            [class.active]="activeManageView === 'upload'"
-            (click)="setManageView('upload')"
-          >
-            อัปโหลด
-          </button>
-          <button
-            *ngIf="canViewYearlyOverview"
-            class="ghost"
-            [class.active]="activeManageView === 'yearly-overview'"
-            (click)="setManageView('yearly-overview')"
-          >
-            ข้อมูลทุกคนรายปี
-          </button>
-        </div>
-      </div>
-
-      <div class="upload-grid" *ngIf="canManage && activeManageView === 'upload'">
-        <section class="upload-box">
-          <h4>เพิ่มแบบรายบุคคล</h4>
-          <p class="note">เพิ่มหลายรายการได้ในครั้งเดียว (cid + pdf) และตรวจว่า PDF ต้องมี 1 หน้า</p>
-
-          <div class="person-row" *ngFor="let row of individualRows; let i = index">
-            <input [(ngModel)]="row.cid" maxlength="13" placeholder="เลขบัตร 13 หลัก" />
-            <input type="file" accept=".pdf,application/pdf" (change)="onIndividualFileChange($event, i)" />
-            <button class="ghost" (click)="removeIndividualRow(i)" [disabled]="individualRows.length === 1">ลบ</button>
-          </div>
-
-          <div class="inline-actions">
-            <button class="ghost" (click)="addIndividualRow()">+ เพิ่มแถว</button>
-            <button [disabled]="previewLoading || confirmingPreview" (click)="prepareIndividualUploadPreview()">
-              ตรวจสอบก่อนบันทึก
-            </button>
-          </div>
-        </section>
-
-        <section class="upload-box">
-          <h4>เพิ่มแบบเป็นชุด (pdf + txt)</h4>
-          <p class="note">ตรวจจำนวนหน้า pdf เท่าจำนวนบรรทัด txt และตรวจ pattern อัตโนมัติ</p>
-          <label class="file-field">
-            <span>PDF ต้นฉบับ</span>
-            <input type="file" accept=".pdf,application/pdf" (change)="onBatchPdfChange($event)" />
-            <small *ngIf="batchPdfFile">{{ batchPdfFile.name }}</small>
-          </label>
-          <label class="file-field">
-            <span>TXT mapping</span>
-            <input type="file" accept=".txt,text/plain" (change)="onBatchTxtChange($event)" />
-            <small *ngIf="batchTxtFile">{{ batchTxtFile.name }}</small>
-          </label>
-          <button [disabled]="previewLoading || confirmingPreview" (click)="prepareBatchUploadPreview()">
-            ตรวจสอบก่อนบันทึก
-          </button>
-        </section>
-      </div>
-
-      <section class="preview-box" *ngIf="activeManageView === 'upload' && activePreviewMode">
-        <h4>ตัวอย่างก่อนบันทึกจริง</h4>
-        <p class="note">ตรวจชื่อไฟล์และ PDF ตัวอย่างให้ถูกต้อง แล้วค่อยยืนยันบันทึก</p>
-
-        <div *ngIf="activePreviewMode === 'individual'">
-          <table class="preview-table" *ngIf="individualPreviewItems.length">
-            <thead>
-              <tr>
-                <th>CID</th>
-                <th>ไฟล์ใหม่</th>
-                <th>ไฟล์ต้นฉบับ</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of pagedIndividualPreviewItems">
-                <td>{{ item.cid }}</td>
-                <td>{{ item.fileName }}</td>
-                <td>{{ item.originalFileName }}</td>
-                <td>
-                  <button class="ghost" (click)="openIndividualPreview(item)">ดู PDF</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="pagination" *ngIf="individualPreviewTotal > 0">
-            <span>Showing {{ individualPreviewStartItem }}-{{ individualPreviewEndItem }} of {{ individualPreviewTotal }}</span>
-            <div class="pager-actions">
-              <button class="ghost" [disabled]="individualPreviewPage <= 1" (click)="prevIndividualPreviewPage()">Prev</button>
-              <span>Page {{ individualPreviewPage }} / {{ individualPreviewTotalPages }}</span>
-              <button class="ghost" [disabled]="individualPreviewPage >= individualPreviewTotalPages" (click)="nextIndividualPreviewPage()">Next</button>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="activePreviewMode === 'batch'">
-          <p class="note">
-            จำนวนหน้า PDF: {{ batchPreviewPageCount }} | จำนวนบรรทัด TXT: {{ batchPreviewLineCount }} | Delimiter: {{ batchPreviewDelimiter }}
-          </p>
-          <table class="preview-table" *ngIf="batchPreviewItems.length">
-            <thead>
-              <tr>
-                <th>หน้า PDF</th>
-                <th>CID</th>
-                <th>ไฟล์ที่</th>
-                <th>ไฟล์ใหม่</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let item of pagedBatchPreviewItems">
-                <td>{{ item.pageNo }}</td>
-                <td>{{ item.cid }}</td>
-                <td>{{ item.fileNo }}</td>
-                <td>{{ item.fileName }}</td>
-                <td>
-                  <button class="ghost" (click)="openBatchSplitPreview(item)">ดู PDF ที่ตัดแล้ว</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="pagination" *ngIf="batchPreviewTotal > 0">
-            <span>Showing {{ batchPreviewStartItem }}-{{ batchPreviewEndItem }} of {{ batchPreviewTotal }}</span>
-            <div class="pager-actions">
-              <button class="ghost" [disabled]="batchPreviewPage <= 1" (click)="prevBatchPreviewPage()">Prev</button>
-              <span>Page {{ batchPreviewPage }} / {{ batchPreviewTotalPages }}</span>
-              <button class="ghost" [disabled]="batchPreviewPage >= batchPreviewTotalPages" (click)="nextBatchPreviewPage()">Next</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="inline-actions">
-          <button [disabled]="confirmingPreview" (click)="confirmPreviewUpload()">
-            {{ confirmingPreview ? 'กำลังบันทึก...' : 'ยืนยันบันทึกจริง' }}
-          </button>
-          <button class="ghost" [disabled]="confirmingPreview" (click)="cancelUploadPreview()">ยกเลิก</button>
-        </div>
-      </section>
-
-      <div *ngIf="activeManageView === 'documents'">
-        <div class="toolbar">
-          <input [(ngModel)]="search" placeholder="ค้นหาเลขบัตร/ชื่อไฟล์" (keyup.enter)="searchSubmit()" />
-          <button (click)="searchSubmit()">Search</button>
-          <button class="ghost" (click)="resetSearch()">Clear</button>
-        </div>
-
-        <table class="compact-table" *ngIf="documents.length; else emptyDocument">
+    
+      @if (years.length) {
+        <table class="compact-table">
           <thead>
             <tr>
-              <th>ชื่อไฟล์</th>
-              <th>ประเภท</th>
+              <th>ปี พ.ศ.</th>
+              <th>Hospcode</th>
+              <th>จำนวนไฟล์</th>
               <th>Updated</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of documents">
-              <td class="file-name" [title]="row.file_name">{{ row.file_name }}</td>
-              <td>{{ row.source_type }}</td>
-              <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-              <td class="actions">
-                <button class="ghost" (click)="downloadDocument(row)">เปิดไฟล์</button>
-                <ng-container *ngIf="canManage">
-                  <button class="danger" (click)="deleteDocument(row)">ลบ</button>
-                </ng-container>
-              </td>
-            </tr>
+            @for (year of pagedYears; track year) {
+              <tr [class.selected]="selectedYearId === year.id">
+                <td>{{ year.yearBe }}</td>
+                <td>{{ year.hospcode }}</td>
+                <td>{{ year.documentCount }}</td>
+                <td>{{ year.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+                <td class="actions">
+                  <button class="ghost" (click)="selectYear(year.id)">เปิด</button>
+                  @if (canManage) {
+                    <button class="danger" (click)="deleteYear(year)">ลบ</button>
+                  }
+                </td>
+              </tr>
+            }
           </tbody>
         </table>
-
-        <ng-template #emptyDocument>
-          <p class="empty">ยังไม่มีรายการรายบุคคลในปีนี้</p>
-        </ng-template>
-
-        <div class="pagination" *ngIf="total > 0">
-          <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+      } @else {
+        <p class="empty">ยังไม่มีปี พ.ศ. สำหรับโมดูลภาษี</p>
+      }
+    
+    
+      @if (yearTotal > 0) {
+        <div class="pagination">
+          <span>Showing {{ yearStartItem }}-{{ yearEndItem }} of {{ yearTotal }}</span>
           <div class="pager-actions">
-            <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-            <span>Page {{ page }} / {{ totalPages }}</span>
-            <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+            <button class="ghost" [disabled]="yearPage <= 1" (click)="prevYearPage()">Prev</button>
+            <span>Page {{ yearPage }} / {{ yearTotalPages }}</span>
+            <button class="ghost" [disabled]="yearPage >= yearTotalPages" (click)="nextYearPage()">Next</button>
           </div>
         </div>
-      </div>
-
-      <div *ngIf="activeManageView === 'yearly-overview'">
-        <div class="toolbar">
-          <input
-            [(ngModel)]="yearlyOverviewSearch"
-            placeholder="ค้นหาเลขบัตร / Hospcode / ชื่อไฟล์"
-            (keyup.enter)="searchYearlyOverview()"
-          />
-          <button (click)="searchYearlyOverview()">ค้นหา</button>
-          <button class="ghost" (click)="resetYearlyOverviewSearch()">ล้าง</button>
-        </div>
-
-        <table class="compact-table" *ngIf="yearlyOverviewRows.length; else emptyYearlyOverview">
-          <thead>
-            <tr>
-              <th>เลขบัตร</th>
-              <th>จำนวนไฟล์</th>
-              <th>จำนวนหน่วยงาน</th>
-              <th>Hospcode ที่พบ</th>
-              <th>Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of yearlyOverviewRows">
-              <td>{{ row.cid }}</td>
-              <td>{{ row.totalFiles }}</td>
-              <td>{{ row.hospcodeCount }}</td>
-              <td>{{ row.hospcodes || '-' }}</td>
-              <td>{{ row.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <ng-template #emptyYearlyOverview>
-          <p class="empty">ไม่พบข้อมูลรายปีตามเงื่อนไขที่ค้นหา</p>
-        </ng-template>
-
-        <div class="pagination" *ngIf="yearlyOverviewTotal > 0">
-          <span>Showing {{ yearlyOverviewStartItem }}-{{ yearlyOverviewEndItem }} of {{ yearlyOverviewTotal }}</span>
-          <div class="pager-actions">
-            <button class="ghost" [disabled]="yearlyOverviewPage <= 1" (click)="prevYearlyOverviewPage()">Prev</button>
-            <span>Page {{ yearlyOverviewPage }} / {{ yearlyOverviewTotalPages }}</span>
+      }
+    </section>
+    
+    @if (selectedYearId) {
+      <section class="card">
+        <div class="manage-head">
+          <h3>จัดการปี {{ selectedYear?.yearBe }} ({{ selectedYear?.hospcode }})</h3>
+          <div class="view-switch">
             <button
               class="ghost"
-              [disabled]="yearlyOverviewPage >= yearlyOverviewTotalPages"
-              (click)="nextYearlyOverviewPage()"
-            >
-              Next
+              [class.active]="activeManageView === 'documents'"
+              (click)="setManageView('documents')"
+              >
+              รายการเอกสาร
             </button>
+            @if (canManage) {
+              <button
+                class="ghost"
+                [class.active]="activeManageView === 'upload'"
+                (click)="setManageView('upload')"
+                >
+                อัปโหลด
+              </button>
+            }
+            @if (canViewYearlyOverview) {
+              <button
+                class="ghost"
+                [class.active]="activeManageView === 'yearly-overview'"
+                (click)="setManageView('yearly-overview')"
+                >
+                ข้อมูลทุกคนรายปี
+              </button>
+            }
           </div>
         </div>
-      </div>
-    </section>
-  `,
+        @if (canManage && activeManageView === 'upload') {
+          <div class="upload-grid">
+            <section class="upload-box">
+              <h4>เพิ่มแบบรายบุคคล</h4>
+              <p class="note">เพิ่มหลายรายการได้ในครั้งเดียว (cid + pdf) และตรวจว่า PDF ต้องมี 1 หน้า</p>
+              @for (row of individualRows; track row; let i = $index) {
+                <div class="person-row">
+                  <input [(ngModel)]="row.cid" maxlength="13" placeholder="เลขบัตร 13 หลัก" />
+                  <input type="file" accept=".pdf,application/pdf" (change)="onIndividualFileChange($event, i)" />
+                  <button class="ghost" (click)="removeIndividualRow(i)" [disabled]="individualRows.length === 1">ลบ</button>
+                </div>
+              }
+              <div class="inline-actions">
+                <button class="ghost" (click)="addIndividualRow()">+ เพิ่มแถว</button>
+                <button [disabled]="previewLoading || confirmingPreview" (click)="prepareIndividualUploadPreview()">
+                  ตรวจสอบก่อนบันทึก
+                </button>
+              </div>
+            </section>
+            <section class="upload-box">
+              <h4>เพิ่มแบบเป็นชุด (pdf + txt)</h4>
+              <p class="note">ตรวจจำนวนหน้า pdf เท่าจำนวนบรรทัด txt และตรวจ pattern อัตโนมัติ</p>
+              <label class="file-field">
+                <span>PDF ต้นฉบับ</span>
+                <input type="file" accept=".pdf,application/pdf" (change)="onBatchPdfChange($event)" />
+                @if (batchPdfFile) {
+                  <small>{{ batchPdfFile.name }}</small>
+                }
+              </label>
+              <label class="file-field">
+                <span>TXT mapping</span>
+                <input type="file" accept=".txt,text/plain" (change)="onBatchTxtChange($event)" />
+                @if (batchTxtFile) {
+                  <small>{{ batchTxtFile.name }}</small>
+                }
+              </label>
+              <button [disabled]="previewLoading || confirmingPreview" (click)="prepareBatchUploadPreview()">
+                ตรวจสอบก่อนบันทึก
+              </button>
+            </section>
+          </div>
+        }
+        @if (activeManageView === 'upload' && activePreviewMode) {
+          <section class="preview-box">
+            <h4>ตัวอย่างก่อนบันทึกจริง</h4>
+            <p class="note">ตรวจชื่อไฟล์และ PDF ตัวอย่างให้ถูกต้อง แล้วค่อยยืนยันบันทึก</p>
+            @if (activePreviewMode === 'individual') {
+              <div>
+                @if (individualPreviewItems.length) {
+                  <table class="preview-table">
+                    <thead>
+                      <tr>
+                        <th>CID</th>
+                        <th>ไฟล์ใหม่</th>
+                        <th>ไฟล์ต้นฉบับ</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of pagedIndividualPreviewItems; track item) {
+                        <tr>
+                          <td>{{ item.cid }}</td>
+                          <td>{{ item.fileName }}</td>
+                          <td>{{ item.originalFileName }}</td>
+                          <td>
+                            <button class="ghost" (click)="openIndividualPreview(item)">ดู PDF</button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+                @if (individualPreviewTotal > 0) {
+                  <div class="pagination">
+                    <span>Showing {{ individualPreviewStartItem }}-{{ individualPreviewEndItem }} of {{ individualPreviewTotal }}</span>
+                    <div class="pager-actions">
+                      <button class="ghost" [disabled]="individualPreviewPage <= 1" (click)="prevIndividualPreviewPage()">Prev</button>
+                      <span>Page {{ individualPreviewPage }} / {{ individualPreviewTotalPages }}</span>
+                      <button class="ghost" [disabled]="individualPreviewPage >= individualPreviewTotalPages" (click)="nextIndividualPreviewPage()">Next</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            @if (activePreviewMode === 'batch') {
+              <div>
+                <p class="note">
+                  จำนวนหน้า PDF: {{ batchPreviewPageCount }} | จำนวนบรรทัด TXT: {{ batchPreviewLineCount }} | Delimiter: {{ batchPreviewDelimiter }}
+                </p>
+                @if (batchPreviewItems.length) {
+                  <table class="preview-table">
+                    <thead>
+                      <tr>
+                        <th>หน้า PDF</th>
+                        <th>CID</th>
+                        <th>ไฟล์ที่</th>
+                        <th>ไฟล์ใหม่</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of pagedBatchPreviewItems; track item) {
+                        <tr>
+                          <td>{{ item.pageNo }}</td>
+                          <td>{{ item.cid }}</td>
+                          <td>{{ item.fileNo }}</td>
+                          <td>{{ item.fileName }}</td>
+                          <td>
+                            <button class="ghost" (click)="openBatchSplitPreview(item)">ดู PDF ที่ตัดแล้ว</button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+                @if (batchPreviewTotal > 0) {
+                  <div class="pagination">
+                    <span>Showing {{ batchPreviewStartItem }}-{{ batchPreviewEndItem }} of {{ batchPreviewTotal }}</span>
+                    <div class="pager-actions">
+                      <button class="ghost" [disabled]="batchPreviewPage <= 1" (click)="prevBatchPreviewPage()">Prev</button>
+                      <span>Page {{ batchPreviewPage }} / {{ batchPreviewTotalPages }}</span>
+                      <button class="ghost" [disabled]="batchPreviewPage >= batchPreviewTotalPages" (click)="nextBatchPreviewPage()">Next</button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            <div class="inline-actions">
+              <button [disabled]="confirmingPreview" (click)="confirmPreviewUpload()">
+                {{ confirmingPreview ? 'กำลังบันทึก...' : 'ยืนยันบันทึกจริง' }}
+              </button>
+              <button class="ghost" [disabled]="confirmingPreview" (click)="cancelUploadPreview()">ยกเลิก</button>
+            </div>
+          </section>
+        }
+        @if (activeManageView === 'documents') {
+          <div>
+            <div class="toolbar">
+              <input [(ngModel)]="search" placeholder="ค้นหาเลขบัตร/ชื่อไฟล์" (keyup.enter)="searchSubmit()" />
+              <button (click)="searchSubmit()">Search</button>
+              <button class="ghost" (click)="resetSearch()">Clear</button>
+            </div>
+            @if (documents.length) {
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อไฟล์</th>
+                    <th>ประเภท</th>
+                    <th>Updated</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of documents; track row) {
+                    <tr>
+                      <td class="file-name" [title]="row.file_name">{{ row.file_name }}</td>
+                      <td>{{ row.source_type }}</td>
+                      <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+                      <td class="actions">
+                        <button class="ghost" (click)="downloadDocument(row)">เปิดไฟล์</button>
+                        @if (canManage) {
+                          <button class="danger" (click)="deleteDocument(row)">ลบ</button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="empty">ยังไม่มีรายการรายบุคคลในปีนี้</p>
+            }
+            @if (total > 0) {
+              <div class="pagination">
+                <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+                <div class="pager-actions">
+                  <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+                  <span>Page {{ page }} / {{ totalPages }}</span>
+                  <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (activeManageView === 'yearly-overview') {
+          <div>
+            <div class="toolbar">
+              <input
+                [(ngModel)]="yearlyOverviewSearch"
+                placeholder="ค้นหาเลขบัตร / Hospcode / ชื่อไฟล์"
+                (keyup.enter)="searchYearlyOverview()"
+                />
+              <button (click)="searchYearlyOverview()">ค้นหา</button>
+              <button class="ghost" (click)="resetYearlyOverviewSearch()">ล้าง</button>
+            </div>
+            @if (yearlyOverviewRows.length) {
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>เลขบัตร</th>
+                    <th>จำนวนไฟล์</th>
+                    <th>จำนวนหน่วยงาน</th>
+                    <th>Hospcode ที่พบ</th>
+                    <th>Updated</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of yearlyOverviewRows; track row) {
+                    <tr>
+                      <td>{{ row.cid }}</td>
+                      <td>{{ row.totalFiles }}</td>
+                      <td>{{ row.hospcodeCount }}</td>
+                      <td>{{ row.hospcodes || '-' }}</td>
+                      <td>{{ row.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="empty">ไม่พบข้อมูลรายปีตามเงื่อนไขที่ค้นหา</p>
+            }
+            @if (yearlyOverviewTotal > 0) {
+              <div class="pagination">
+                <span>Showing {{ yearlyOverviewStartItem }}-{{ yearlyOverviewEndItem }} of {{ yearlyOverviewTotal }}</span>
+                <div class="pager-actions">
+                  <button class="ghost" [disabled]="yearlyOverviewPage <= 1" (click)="prevYearlyOverviewPage()">Prev</button>
+                  <span>Page {{ yearlyOverviewPage }} / {{ yearlyOverviewTotalPages }}</span>
+                  <button
+                    class="ghost"
+                    [disabled]="yearlyOverviewPage >= yearlyOverviewTotalPages"
+                    (click)="nextYearlyOverviewPage()"
+                    >
+                    Next
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
@@ -1103,7 +1147,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     const [copiedPage] = await pagePdf.copyPages(sourcePdf, [pageIndex]);
     pagePdf.addPage(copiedPage);
     const pageBytes = await pagePdf.save();
-    const blob = new Blob([pageBytes], { type: 'application/pdf' });
+    // TypeScript 5.9 ทำให้ Uint8Array เป็น generic: สำเนาเพื่อยืนยันว่า buffer เป็น ArrayBuffer ไม่ใช่ SharedArrayBuffer
+    const blob = new Blob([new Uint8Array(pageBytes)], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
 
     const anchor = document.createElement('a');
