@@ -1,18 +1,18 @@
 import { Component, OnInit } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { AttendanceService } from './attendance.service';
 
 @Component({
     selector: 'app-attendance-dashboard',
-    imports: [NgIf, NgFor, FormsModule],
+    imports: [FormsModule],
     template: `
     <section class="card">
       <header>
         <h2>Attendance Dashboard</h2>
       </header>
-
+    
       <div class="control-grid">
         <section class="control-card">
           <h3>ค้นหาข้อมูล</h3>
@@ -22,7 +22,7 @@ import { AttendanceService } from './attendance.service';
             <button (click)="searchSubmit()">Search</button>
           </div>
         </section>
-
+    
         <section class="control-card">
           <h3>ออกรายงาน Excel / PDF</h3>
           <div class="export-list">
@@ -43,59 +43,70 @@ import { AttendanceService } from './attendance.service';
           </div>
         </section>
       </div>
-
-      <div class="summary" *ngIf="dashboard">
-        <article>
-          <p>Total Records</p>
-          <strong>{{ dashboard.summary?.total_records || 0 }}</strong>
-        </article>
-        <article>
-          <p>Checked In</p>
-          <strong>{{ dashboard.summary?.checked_in_count || 0 }}</strong>
-        </article>
-        <article>
-          <p>Checked Out</p>
-          <strong>{{ dashboard.summary?.checked_out_count || 0 }}</strong>
-        </article>
-      </div>
-
-      <table *ngIf="rows.length">
-        <thead>
-          <tr>
-            <th>CID</th>
-            <th>Name</th>
-            <th *ngIf="isSuperAdmin">Hospcode</th>
-            <th>Date</th>
-            <th>Check-in</th>
-            <th>Check-out</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            *ngFor="let row of rows; let i = index"
-            [class.date-divider]="isFirstRowOfDate(i)"
-            [class.date-group-alt]="isAltDateGroup(i)"
-          >
-            <td>{{ row.cid }}</td>
-            <td>{{ row.first_name }} {{ row.last_name }}</td>
-            <td *ngIf="isSuperAdmin">{{ row.hospcode }}</td>
-            <td>{{ formatAttendanceDate(row.attendance_date) }}</td>
-            <td>{{ formatAttendanceTime(row.check_in_at) }}</td>
-            <td>{{ formatAttendanceTime(row.check_out_at) }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="pagination" *ngIf="total > 0">
-        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-          <span>Page {{ page }} / {{ totalPages }}</span>
-          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+    
+      @if (dashboard) {
+        <div class="summary">
+          <article>
+            <p>Total Records</p>
+            <strong>{{ dashboard.summary?.total_records || 0 }}</strong>
+          </article>
+          <article>
+            <p>Checked In</p>
+            <strong>{{ dashboard.summary?.checked_in_count || 0 }}</strong>
+          </article>
+          <article>
+            <p>Checked Out</p>
+            <strong>{{ dashboard.summary?.checked_out_count || 0 }}</strong>
+          </article>
         </div>
-      </div>
+      }
+    
+      @if (rows.length) {
+        <table>
+          <thead>
+            <tr>
+              <th>CID</th>
+              <th>Name</th>
+              @if (isSuperAdmin) {
+                <th>Hospcode</th>
+              }
+              <th>Date</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row; let i = $index) {
+              <tr
+                [class.date-divider]="isFirstRowOfDate(i)"
+                [class.date-group-alt]="isAltDateGroup(i)"
+                >
+                <td>{{ row.cid }}</td>
+                <td>{{ row.first_name }} {{ row.last_name }}</td>
+                @if (isSuperAdmin) {
+                  <td>{{ row.hospcode }}</td>
+                }
+                <td>{{ formatAttendanceDate(row.attendance_date) }}</td>
+                <td>{{ formatAttendanceTime(row.check_in_at) }}</td>
+                <td>{{ formatAttendanceTime(row.check_out_at) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    
+      @if (total > 0) {
+        <div class="pagination">
+          <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+            <span>Page {{ page }} / {{ totalPages }}</span>
+            <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+          </div>
+        </div>
+      }
     </section>
-  `,
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }

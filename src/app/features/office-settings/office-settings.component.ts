@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { OfficeSettingRow, OfficeSettingsService } from './office-settings.service';
@@ -8,12 +8,12 @@ type StatusFilter = 'all' | '1' | '0';
 
 @Component({
     selector: 'app-office-settings',
-    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    imports: [FormsModule, DatePipe],
     template: `
     <section class="card">
       <h2>Office Settings</h2>
       <p class="note">จัดการข้อมูลหน่วยงาน/โรงพยาบาลตามสิทธิ์และขอบเขตหน่วยงานของผู้ใช้</p>
-
+    
       <div class="toolbar">
         <input [(ngModel)]="search" placeholder="Search by hospcode, name, province" />
         <select [(ngModel)]="statusFilter">
@@ -22,106 +22,129 @@ type StatusFilter = 'all' | '1' | '0';
           <option value="0">Inactive</option>
         </select>
         <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }} / page</option>
+          @for (size of pageSizeOptions; track size) {
+            <option [ngValue]="size">{{ size }} / page</option>
+          }
         </select>
         <button (click)="searchSubmit()">Search</button>
         <button class="ghost" (click)="resetFilters()">Clear</button>
       </div>
-
-      <div class="form-grid" *ngIf="canManage">
-        <input [(ngModel)]="createForm.hospcode" maxlength="10" placeholder="Hospcode" />
-        <input [(ngModel)]="createForm.name" placeholder="Office name" />
-        <input [(ngModel)]="createForm.province_code" maxlength="10" placeholder="Province code" />
-        <select [(ngModel)]="createForm.is_active">
-          <option [ngValue]="1">Active</option>
-          <option [ngValue]="0">Inactive</option>
-        </select>
-        <button (click)="create()">Add Office</button>
-      </div>
-
-      <p class="note" *ngIf="!canManage">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ office_settings.update)</p>
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-
-      <table *ngIf="rows.length; else emptyState">
-        <thead>
-          <tr>
-            <th>Hospcode</th>
-            <th>Name</th>
-            <th>Province</th>
-            <th>Status</th>
-            <th>Checkin-Checkout</th>
-            <th>Updated</th>
-            <th *ngIf="canManage"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of rows">
-            <td>{{ row.hospcode }}</td>
-            <td *ngIf="editHospcode !== row.hospcode">{{ row.name }}</td>
-            <td *ngIf="editHospcode === row.hospcode">
-              <input [(ngModel)]="editForm.name" placeholder="Office name" />
-            </td>
-
-            <td *ngIf="editHospcode !== row.hospcode">{{ row.province_code || '-' }}</td>
-            <td *ngIf="editHospcode === row.hospcode">
-              <input [(ngModel)]="editForm.province_code" maxlength="10" placeholder="Province code" />
-            </td>
-
-            <td *ngIf="editHospcode !== row.hospcode">
-              <span [class.inactive]="row.is_active === 0">
-                {{ row.is_active === 1 ? 'Active' : 'Inactive' }}
-              </span>
-            </td>
-            <td *ngIf="editHospcode === row.hospcode">
-              <select [(ngModel)]="editForm.is_active">
-                <option [ngValue]="1">Active</option>
-                <option [ngValue]="0">Inactive</option>
-              </select>
-            </td>
-
-            <td>
-              <div class="checkin-cell">
-                <button
-                  *ngIf="canManage"
-                  [disabled]="row.is_checkin_registered === 1 || registeringHospcode === row.hospcode"
-                  (click)="registerCheckinOffice(row)"
-                >
-                  {{ registeringHospcode === row.hospcode ? 'กำลังบันทึก...' : row.is_checkin_registered === 1 ? 'ลงทะเบียนแล้ว' : 'ลงทะเบียน' }}
-                </button>
-              </div>
-            </td>
-
-            <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-
-            <td *ngIf="canManage" class="actions">
-              <ng-container *ngIf="editHospcode === row.hospcode; else defaultActions">
-                <button (click)="saveEdit(row.hospcode)">Save</button>
-                <button class="ghost" (click)="cancelEdit()">Cancel</button>
-              </ng-container>
-
-              <ng-template #defaultActions>
-                <button class="ghost" (click)="startEdit(row)">Edit</button>
-                <button class="danger" (click)="remove(row.hospcode)">Deactivate</button>
-              </ng-template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <ng-template #emptyState>
-        <p class="empty">ไม่พบข้อมูลหน่วยงาน</p>
-      </ng-template>
-
-      <div class="pagination" *ngIf="total > 0">
-        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-          <span>Page {{ page }} / {{ totalPages }}</span>
-          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+    
+      @if (canManage) {
+        <div class="form-grid">
+          <input [(ngModel)]="createForm.hospcode" maxlength="10" placeholder="Hospcode" />
+          <input [(ngModel)]="createForm.name" placeholder="Office name" />
+          <input [(ngModel)]="createForm.province_code" maxlength="10" placeholder="Province code" />
+          <select [(ngModel)]="createForm.is_active">
+            <option [ngValue]="1">Active</option>
+            <option [ngValue]="0">Inactive</option>
+          </select>
+          <button (click)="create()">Add Office</button>
         </div>
-      </div>
+      }
+    
+      @if (!canManage) {
+        <p class="note">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ office_settings.update)</p>
+      }
+      @if (errorMessage) {
+        <p class="error">{{ errorMessage }}</p>
+      }
+    
+      @if (rows.length) {
+        <table>
+          <thead>
+            <tr>
+              <th>Hospcode</th>
+              <th>Name</th>
+              <th>Province</th>
+              <th>Status</th>
+              <th>Checkin-Checkout</th>
+              <th>Updated</th>
+              @if (canManage) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row) {
+              <tr>
+                <td>{{ row.hospcode }}</td>
+                @if (editHospcode !== row.hospcode) {
+                  <td>{{ row.name }}</td>
+                }
+                @if (editHospcode === row.hospcode) {
+                  <td>
+                    <input [(ngModel)]="editForm.name" placeholder="Office name" />
+                  </td>
+                }
+                @if (editHospcode !== row.hospcode) {
+                  <td>{{ row.province_code || '-' }}</td>
+                }
+                @if (editHospcode === row.hospcode) {
+                  <td>
+                    <input [(ngModel)]="editForm.province_code" maxlength="10" placeholder="Province code" />
+                  </td>
+                }
+                @if (editHospcode !== row.hospcode) {
+                  <td>
+                    <span [class.inactive]="row.is_active === 0">
+                      {{ row.is_active === 1 ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                }
+                @if (editHospcode === row.hospcode) {
+                  <td>
+                    <select [(ngModel)]="editForm.is_active">
+                      <option [ngValue]="1">Active</option>
+                      <option [ngValue]="0">Inactive</option>
+                    </select>
+                  </td>
+                }
+                <td>
+                  <div class="checkin-cell">
+                    @if (canManage) {
+                      <button
+                        [disabled]="row.is_checkin_registered === 1 || registeringHospcode === row.hospcode"
+                        (click)="registerCheckinOffice(row)"
+                        >
+                        {{ registeringHospcode === row.hospcode ? 'กำลังบันทึก...' : row.is_checkin_registered === 1 ? 'ลงทะเบียนแล้ว' : 'ลงทะเบียน' }}
+                      </button>
+                    }
+                  </div>
+                </td>
+                <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+                @if (canManage) {
+                  <td class="actions">
+                    @if (editHospcode === row.hospcode) {
+                      <button (click)="saveEdit(row.hospcode)">Save</button>
+                      <button class="ghost" (click)="cancelEdit()">Cancel</button>
+                    } @else {
+                      <button class="ghost" (click)="startEdit(row)">Edit</button>
+                      <button class="danger" (click)="remove(row.hospcode)">Deactivate</button>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="empty">ไม่พบข้อมูลหน่วยงาน</p>
+      }
+    
+    
+      @if (total > 0) {
+        <div class="pagination">
+          <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+            <span>Page {{ page }} / {{ totalPages }}</span>
+            <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+          </div>
+        </div>
+      }
     </section>
-  `,
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }

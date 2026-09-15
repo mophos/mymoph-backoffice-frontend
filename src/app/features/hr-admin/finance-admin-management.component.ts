@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { FinanceAdminService } from './finance-admin.service';
 
@@ -14,72 +14,83 @@ interface FinanceAdminRow {
 
 @Component({
     selector: 'app-finance-admin-management',
-    imports: [NgFor, NgIf, FormsModule],
+    imports: [FormsModule],
     template: `
     <section class="card">
       <h2>Finance Office Admin Management</h2>
       <p class="note">หน้านี้จัดการเฉพาะสิทธิ์ admin_affairs เท่านั้น</p>
-
+    
       <div class="toolbar">
         <input [(ngModel)]="search" placeholder="Search by CID, name, email" />
         <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }} / page</option>
+          @for (size of pageSizeOptions; track size) {
+            <option [ngValue]="size">{{ size }} / page</option>
+          }
         </select>
         <button (click)="searchSubmit()">Search</button>
         <button class="ghost" (click)="resetSearch()">Clear</button>
       </div>
-
+    
       <div class="form-grid">
         <input [(ngModel)]="form.cid" placeholder="CID" />
         <input [(ngModel)]="scopeInput" placeholder="Hospcodes (comma separated)" />
         <button (click)="save()">{{ editingUserId ? 'Update' : 'Save' }}</button>
       </div>
-
-      <div class="actions-bar" *ngIf="editingUserId">
-        <span>Editing user: {{ editingUserId }}</span>
-        <button class="ghost" (click)="cancelEdit()">Cancel edit</button>
-      </div>
-
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-
-      <table *ngIf="rows.length; else emptyState">
-        <thead>
-          <tr>
-            <th>CID</th>
-            <th>Name</th>
-            <th>Roles</th>
-            <th>Scope</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of rows">
-            <td>{{ row.cid }}</td>
-            <td>{{ (row.first_name || '-') }} {{ (row.last_name || '') }}</td>
-            <td>{{ row.role_codes.join(', ') }}</td>
-            <td>{{ row.hospcodes.join(', ') }}</td>
-            <td class="table-actions">
-              <button class="ghost" (click)="startEdit(row)">Edit</button>
-              <button class="danger" (click)="deactivate(row.user_id)">Deactivate</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <ng-template #emptyState>
-        <p class="note">ไม่พบข้อมูลผู้ดูแลการเงิน</p>
-      </ng-template>
-
-      <div class="pagination" *ngIf="total > 0">
-        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-          <span>Page {{ page }} / {{ totalPages }}</span>
-          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+    
+      @if (editingUserId) {
+        <div class="actions-bar">
+          <span>Editing user: {{ editingUserId }}</span>
+          <button class="ghost" (click)="cancelEdit()">Cancel edit</button>
         </div>
-      </div>
+      }
+    
+      @if (errorMessage) {
+        <p class="error">{{ errorMessage }}</p>
+      }
+    
+      @if (rows.length) {
+        <table>
+          <thead>
+            <tr>
+              <th>CID</th>
+              <th>Name</th>
+              <th>Roles</th>
+              <th>Scope</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row) {
+              <tr>
+                <td>{{ row.cid }}</td>
+                <td>{{ (row.first_name || '-') }} {{ (row.last_name || '') }}</td>
+                <td>{{ row.role_codes.join(', ') }}</td>
+                <td>{{ row.hospcodes.join(', ') }}</td>
+                <td class="table-actions">
+                  <button class="ghost" (click)="startEdit(row)">Edit</button>
+                  <button class="danger" (click)="deactivate(row.user_id)">Deactivate</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="note">ไม่พบข้อมูลผู้ดูแลการเงิน</p>
+      }
+    
+    
+      @if (total > 0) {
+        <div class="pagination">
+          <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+            <span>Page {{ page }} / {{ totalPages }}</span>
+            <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+          </div>
+        </div>
+      }
     </section>
-  `,
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }

@@ -1,29 +1,30 @@
 import { Component } from '@angular/core';
-import { AsyncPipe, NgIf } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './sidebar.component';
 import { AuthService } from '../core/auth/auth.service';
 
 @Component({
     selector: 'app-shell',
-    imports: [RouterOutlet, SidebarComponent, NgIf, AsyncPipe],
+    imports: [RouterOutlet, SidebarComponent, AsyncPipe],
     template: `
-    <div class="shell" *ngIf="authService.user$ | async as user">
-      <app-sidebar [userName]="user.displayName || user.cid" [menus]="user.menus" />
-      <main class="content">
-        <header class="topbar">
-          <div>
-            <h1>MyMOPH Back Office</h1>
-            <p>{{ user.roles.join(', ') || 'No role' }} | Scope: {{ user.scopeType === 'ALL' ? 'ALL' : user.hospcodes.join(', ') }}</p>
-          </div>
-        </header>
-
-        <section class="page">
-          <router-outlet />
-        </section>
-      </main>
-    </div>
-  `,
+    @if (authService.user$ | async; as user) {
+      <div class="shell">
+        <app-sidebar [userName]="user.displayName || user.cid" [menus]="user.menus" />
+        <main class="content">
+          <header class="topbar">
+            <div>
+              <h1>MyMOPH Back Office</h1>
+              <p>{{ user.roles.join(', ') || 'No role' }} | Scope: {{ user.scopeType === 'ALL' ? 'ALL' : user.hospcodes.join(', ') }}</p>
+            </div>
+          </header>
+          <section class="page">
+            <router-outlet />
+          </section>
+        </main>
+      </div>
+    }
+    `,
     styles: [
         `
     .shell { display: grid; grid-template-columns: clamp(300px, 26vw, 360px) 1fr; min-height: 100vh; }

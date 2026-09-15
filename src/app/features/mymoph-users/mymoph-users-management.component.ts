@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { NgFor, NgIf } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { MymophUserRow, MymophUsersService } from './mymoph-users.service';
 
 @Component({
     selector: 'app-mymoph-users-management',
-    imports: [NgIf, NgFor, FormsModule],
+    imports: [FormsModule],
     template: `
     <section class="card">
       <header class="page-head">
@@ -16,108 +16,125 @@ import { MymophUserRow, MymophUsersService } from './mymoph-users.service';
         </div>
         <div class="privacy-mark">ข้อมูลส่วนบุคคล</div>
       </header>
-
+    
       <div class="toolbar">
         <input
           [(ngModel)]="search"
           maxlength="100"
           placeholder="เลขบัตรประชาชน หรืออีเมล"
           (keyup.enter)="searchSubmit()"
-        />
+          />
         <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }} / page</option>
+          @for (size of pageSizeOptions; track size) {
+            <option [ngValue]="size">{{ size }} / page</option>
+          }
         </select>
         <button [disabled]="loading" (click)="searchSubmit()">{{ loading ? 'กำลังค้นหา...' : 'ค้นหา' }}</button>
         <button class="ghost" [disabled]="loading" (click)="clearSearch()">ล้าง</button>
       </div>
-
-      <p class="message error" *ngIf="errorMessage">{{ errorMessage }}</p>
-      <p class="message success" *ngIf="successMessage">{{ successMessage }}</p>
-
-      <div class="table-wrap" *ngIf="rows.length; else emptyState">
-        <table>
-          <thead>
-            <tr>
-              <th>CID</th>
-              <th>ชื่อ</th>
-              <th>อีเมล</th>
-              <th>KYC</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let row of rows">
-              <td class="mono">{{ row.cidMasked || '-' }}</td>
-              <td>{{ displayName(row) }}</td>
-              <td>{{ row.email || '-' }}</td>
-              <td>
-                <span class="status" [class.verified]="row.isKyc === 'Y'">
-                  {{ kycLabel(row.isKyc) }}
-                </span>
-              </td>
-              <td class="actions">
-                <button
-                  *ngIf="canVerifyHr"
-                  class="ghost"
-                  [disabled]="actionId === row.id"
-                  (click)="verifyHr(row)"
-                >
-                  ตรวจสอบกับ บค.
-                </button>
-                <button
-                  *ngIf="canDelete"
-                  class="danger"
-                  [disabled]="actionId === row.id"
-                  (click)="openDelete(row)"
-                >
-                  ลบข้อมูล
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <ng-template #emptyState>
+    
+      @if (errorMessage) {
+        <p class="message error">{{ errorMessage }}</p>
+      }
+      @if (successMessage) {
+        <p class="message success">{{ successMessage }}</p>
+      }
+    
+      @if (rows.length) {
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>CID</th>
+                <th>ชื่อ</th>
+                <th>อีเมล</th>
+                <th>KYC</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows; track row) {
+                <tr>
+                  <td class="mono">{{ row.cidMasked || '-' }}</td>
+                  <td>{{ displayName(row) }}</td>
+                  <td>{{ row.email || '-' }}</td>
+                  <td>
+                    <span class="status" [class.verified]="row.isKyc === 'Y'">
+                      {{ kycLabel(row.isKyc) }}
+                    </span>
+                  </td>
+                  <td class="actions">
+                    @if (canVerifyHr) {
+                      <button
+                        class="ghost"
+                        [disabled]="actionId === row.id"
+                        (click)="verifyHr(row)"
+                        >
+                        ตรวจสอบกับ บค.
+                      </button>
+                    }
+                    @if (canDelete) {
+                      <button
+                        class="danger"
+                        [disabled]="actionId === row.id"
+                        (click)="openDelete(row)"
+                        >
+                        ลบข้อมูล
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
         <div class="empty">
           <strong>{{ searched ? 'ไม่พบข้อมูล' : 'เริ่มต้นด้วยการค้นหา' }}</strong>
           <span>{{ searched ? 'ลองตรวจสอบ CID หรืออีเมลอีกครั้ง' : 'ระบบจะไม่โหลดข้อมูลทั้งหมดโดยอัตโนมัติ' }}</span>
         </div>
-      </ng-template>
-
-      <div class="pagination" *ngIf="total > 0">
-        <span>แสดง {{ startItem }}–{{ endItem }} จาก {{ total }} รายการ</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="page <= 1 || loading" (click)="prevPage()">ก่อนหน้า</button>
-          <span>หน้า {{ page }} / {{ totalPages }}</span>
-          <button class="ghost" [disabled]="page >= totalPages || loading" (click)="nextPage()">ถัดไป</button>
+      }
+    
+    
+      @if (total > 0) {
+        <div class="pagination">
+          <span>แสดง {{ startItem }}–{{ endItem }} จาก {{ total }} รายการ</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="page <= 1 || loading" (click)="prevPage()">ก่อนหน้า</button>
+            <span>หน้า {{ page }} / {{ totalPages }}</span>
+            <button class="ghost" [disabled]="page >= totalPages || loading" (click)="nextPage()">ถัดไป</button>
+          </div>
         </div>
-      </div>
+      }
     </section>
-
-    <div class="modal-backdrop" *ngIf="deleteTarget">
-      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
-        <p class="eyebrow danger-text">ARCHIVE & DELETE</p>
-        <h3 id="delete-title">ลบข้อมูล User MyMOPH</h3>
-        <p class="note">ข้อมูลเดิมจะถูกเก็บใน collection users_remove ก่อนลบ</p>
-        <dl>
-          <dt>CID</dt><dd>{{ deleteTarget.cidMasked || '-' }}</dd>
-          <dt>อีเมล</dt><dd>{{ deleteTarget.email || '-' }}</dd>
-        </dl>
-        <label>
-          <span>เหตุผลในการลบ</span>
-          <textarea [(ngModel)]="deleteReason" maxlength="500" rows="4" placeholder="ระบุเหตุผลอย่างน้อย 5 ตัวอักษร"></textarea>
-        </label>
-        <p class="message error" *ngIf="deleteError">{{ deleteError }}</p>
-        <div class="modal-actions">
-          <button class="ghost" [disabled]="deleting" (click)="closeDelete()">ยกเลิก</button>
-          <button class="danger" [disabled]="deleting" (click)="confirmDelete()">
-            {{ deleting ? 'กำลังลบ...' : 'ยืนยันลบข้อมูล' }}
-          </button>
-        </div>
-      </section>
-    </div>
-  `,
+    
+    @if (deleteTarget) {
+      <div class="modal-backdrop">
+        <section class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+          <p class="eyebrow danger-text">ARCHIVE & DELETE</p>
+          <h3 id="delete-title">ลบข้อมูล User MyMOPH</h3>
+          <p class="note">ข้อมูลเดิมจะถูกเก็บใน collection users_remove ก่อนลบ</p>
+          <dl>
+            <dt>CID</dt><dd>{{ deleteTarget.cidMasked || '-' }}</dd>
+            <dt>อีเมล</dt><dd>{{ deleteTarget.email || '-' }}</dd>
+          </dl>
+          <label>
+            <span>เหตุผลในการลบ</span>
+            <textarea [(ngModel)]="deleteReason" maxlength="500" rows="4" placeholder="ระบุเหตุผลอย่างน้อย 5 ตัวอักษร"></textarea>
+          </label>
+          @if (deleteError) {
+            <p class="message error">{{ deleteError }}</p>
+          }
+          <div class="modal-actions">
+            <button class="ghost" [disabled]="deleting" (click)="closeDelete()">ยกเลิก</button>
+            <button class="danger" [disabled]="deleting" (click)="confirmDelete()">
+              {{ deleting ? 'กำลังลบ...' : 'ยืนยันลบข้อมูล' }}
+            </button>
+          </div>
+        </section>
+      </div>
+    }
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }

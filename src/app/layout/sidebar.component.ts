@@ -1,12 +1,12 @@
 import { Component, Input } from '@angular/core';
-import { NgFor } from '@angular/common';
+
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { MenuItem } from '../core/models/auth.models';
 
 @Component({
     selector: 'app-sidebar',
-    imports: [NgFor, RouterLink, RouterLinkActive],
+    imports: [RouterLink, RouterLinkActive],
     template: `
     <aside class="sidebar">
       <div class="brand">
@@ -16,24 +16,25 @@ import { MenuItem } from '../core/models/auth.models';
           <div class="subtitle">{{ userName }}</div>
         </div>
       </div>
-
+    
       <nav>
-        <a
-          *ngFor="let menu of menus"
-          [routerLink]="menu.path"
-          routerLinkActive="active"
-          class="menu-item"
-        >
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path [attr.d]="iconPath(menu.icon)" fill="currentColor"></path>
-          </svg>
-          <span>{{ menu.label }}</span>
-        </a>
+        @for (menu of menus; track menu) {
+          <a
+            [routerLink]="menu.path"
+            routerLinkActive="active"
+            class="menu-item"
+            >
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="iconPath(menu.icon)" fill="currentColor"></path>
+            </svg>
+            <span>{{ menu.label }}</span>
+          </a>
+        }
       </nav>
-
+    
       <button class="logout" (click)="logout()">Logout</button>
     </aside>
-  `,
+    `,
     styles: [
         `
     .sidebar {

@@ -1,133 +1,179 @@
 import { Component, OnInit } from '@angular/core';
-import { DatePipe, NgFor, NgIf } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { PersonnelRow, PersonnelService } from './personnel.service';
 
 @Component({
     selector: 'app-personnel-management',
-    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    imports: [FormsModule, DatePipe],
     template: `
     <section class="card">
       <h2>ข้อมูลบุคลากร</h2>
       <p class="note">ใช้สำหรับอ้างอิงในการออกรายงานต่างๆ</p>
-
+    
       <div class="toolbar">
         <input [(ngModel)]="search" placeholder="ค้นหาเลขบัตร/ชื่อ/นามสกุล" />
         <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-          <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }} / page</option>
+          @for (size of pageSizeOptions; track size) {
+            <option [ngValue]="size">{{ size }} / page</option>
+          }
         </select>
         <button (click)="searchSubmit()">Search</button>
         <button class="ghost" (click)="resetFilters()">Clear</button>
       </div>
-
-      <div class="form-grid" *ngIf="canManage">
-        <input [(ngModel)]="createForm.cid" maxlength="13" placeholder="เลขบัตร 13 หลัก" />
-        <input [(ngModel)]="createForm.firstName" maxlength="100" placeholder="ชื่อ" />
-        <input [(ngModel)]="createForm.lastName" maxlength="100" placeholder="นามสกุล" />
-        <input
-          *ngIf="isSuperAdmin"
-          [(ngModel)]="createForm.hospcode"
-          maxlength="10"
-          placeholder="Hospcode"
-        />
-        <select *ngIf="!isSuperAdmin && scopeHospcodes.length > 1" [(ngModel)]="createForm.hospcode">
-          <option *ngFor="let hospcode of scopeHospcodes" [ngValue]="hospcode">{{ hospcode }}</option>
-        </select>
-        <div *ngIf="!isSuperAdmin && scopeHospcodes.length <= 1" class="fixed-scope">
-          Hospcode: {{ defaultHospcode || '-' }}
-        </div>
-        <button (click)="create()">เพิ่มข้อมูล</button>
-      </div>
-
-      <section class="upload-card" *ngIf="canManage">
-        <h3>Upload Excel</h3>
-        <div class="upload-controls">
-          <button class="ghost" (click)="downloadTemplate()">ดาวน์โหลด Template</button>
-          <input type="file" accept=".xlsx" (change)="onFileSelected($event)" />
-          <button [disabled]="!selectedFile || uploading" (click)="uploadExcel()">
-            {{ uploading ? 'กำลังอัปโหลด...' : 'Upload Excel' }}
-          </button>
-        </div>
-        <p class="note" *ngIf="uploadSummary">{{ uploadSummary }}</p>
-        <p class="error" *ngIf="uploadError">{{ uploadError }}</p>
-      </section>
-
-      <p class="note" *ngIf="!canManage">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ personnel.manage)</p>
-      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
-
-      <table *ngIf="rows.length; else emptyState">
-        <thead>
-          <tr>
-            <th>เลขบัตร</th>
-            <th>ชื่อ</th>
-            <th>นามสกุล</th>
-            <th *ngIf="showHospcodeColumn">Hospcode</th>
-            <th>Updated</th>
-            <th *ngIf="canManage"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of rows">
-            <td *ngIf="editId !== row.id">{{ row.cid }}</td>
-            <td *ngIf="editId === row.id">
-              <input [(ngModel)]="editForm.cid" maxlength="13" placeholder="เลขบัตร" />
-            </td>
-
-            <td *ngIf="editId !== row.id">{{ row.first_name }}</td>
-            <td *ngIf="editId === row.id">
-              <input [(ngModel)]="editForm.firstName" maxlength="100" placeholder="ชื่อ" />
-            </td>
-
-            <td *ngIf="editId !== row.id">{{ row.last_name }}</td>
-            <td *ngIf="editId === row.id">
-              <input [(ngModel)]="editForm.lastName" maxlength="100" placeholder="นามสกุล" />
-            </td>
-
-            <td *ngIf="showHospcodeColumn && editId !== row.id">{{ row.hospcode }}</td>
-            <td *ngIf="showHospcodeColumn && editId === row.id">
-              <input
-                *ngIf="isSuperAdmin"
-                [(ngModel)]="editForm.hospcode"
-                maxlength="10"
-                placeholder="Hospcode"
+    
+      @if (canManage) {
+        <div class="form-grid">
+          <input [(ngModel)]="createForm.cid" maxlength="13" placeholder="เลขบัตร 13 หลัก" />
+          <input [(ngModel)]="createForm.firstName" maxlength="100" placeholder="ชื่อ" />
+          <input [(ngModel)]="createForm.lastName" maxlength="100" placeholder="นามสกุล" />
+          @if (isSuperAdmin) {
+            <input
+              [(ngModel)]="createForm.hospcode"
+              maxlength="10"
+              placeholder="Hospcode"
               />
-              <select *ngIf="!isSuperAdmin" [(ngModel)]="editForm.hospcode">
-                <option *ngFor="let hospcode of scopeHospcodes" [ngValue]="hospcode">{{ hospcode }}</option>
-              </select>
-            </td>
-
-            <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-
-            <td *ngIf="canManage" class="actions">
-              <ng-container *ngIf="editId === row.id; else defaultActions">
-                <button (click)="saveEdit(row.id)">Save</button>
-                <button class="ghost" (click)="cancelEdit()">Cancel</button>
-              </ng-container>
-
-              <ng-template #defaultActions>
-                <button class="ghost" (click)="startEdit(row)">Edit</button>
-                <button class="danger" (click)="remove(row.id)">Delete</button>
-              </ng-template>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <ng-template #emptyState>
-        <p class="empty">ไม่พบข้อมูลบุคลากร</p>
-      </ng-template>
-
-      <div class="pagination" *ngIf="total > 0">
-        <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
-        <div class="pager-actions">
-          <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-          <span>Page {{ page }} / {{ totalPages }}</span>
-          <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+          }
+          @if (!isSuperAdmin && scopeHospcodes.length > 1) {
+            <select [(ngModel)]="createForm.hospcode">
+              @for (hospcode of scopeHospcodes; track hospcode) {
+                <option [ngValue]="hospcode">{{ hospcode }}</option>
+              }
+            </select>
+          }
+          @if (!isSuperAdmin && scopeHospcodes.length <= 1) {
+            <div class="fixed-scope">
+              Hospcode: {{ defaultHospcode || '-' }}
+            </div>
+          }
+          <button (click)="create()">เพิ่มข้อมูล</button>
         </div>
-      </div>
+      }
+    
+      @if (canManage) {
+        <section class="upload-card">
+          <h3>Upload Excel</h3>
+          <div class="upload-controls">
+            <button class="ghost" (click)="downloadTemplate()">ดาวน์โหลด Template</button>
+            <input type="file" accept=".xlsx" (change)="onFileSelected($event)" />
+            <button [disabled]="!selectedFile || uploading" (click)="uploadExcel()">
+              {{ uploading ? 'กำลังอัปโหลด...' : 'Upload Excel' }}
+            </button>
+          </div>
+          @if (uploadSummary) {
+            <p class="note">{{ uploadSummary }}</p>
+          }
+          @if (uploadError) {
+            <p class="error">{{ uploadError }}</p>
+          }
+        </section>
+      }
+    
+      @if (!canManage) {
+        <p class="note">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ personnel.manage)</p>
+      }
+      @if (errorMessage) {
+        <p class="error">{{ errorMessage }}</p>
+      }
+    
+      @if (rows.length) {
+        <table>
+          <thead>
+            <tr>
+              <th>เลขบัตร</th>
+              <th>ชื่อ</th>
+              <th>นามสกุล</th>
+              @if (showHospcodeColumn) {
+                <th>Hospcode</th>
+              }
+              <th>Updated</th>
+              @if (canManage) {
+                <th></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row) {
+              <tr>
+                @if (editId !== row.id) {
+                  <td>{{ row.cid }}</td>
+                }
+                @if (editId === row.id) {
+                  <td>
+                    <input [(ngModel)]="editForm.cid" maxlength="13" placeholder="เลขบัตร" />
+                  </td>
+                }
+                @if (editId !== row.id) {
+                  <td>{{ row.first_name }}</td>
+                }
+                @if (editId === row.id) {
+                  <td>
+                    <input [(ngModel)]="editForm.firstName" maxlength="100" placeholder="ชื่อ" />
+                  </td>
+                }
+                @if (editId !== row.id) {
+                  <td>{{ row.last_name }}</td>
+                }
+                @if (editId === row.id) {
+                  <td>
+                    <input [(ngModel)]="editForm.lastName" maxlength="100" placeholder="นามสกุล" />
+                  </td>
+                }
+                @if (showHospcodeColumn && editId !== row.id) {
+                  <td>{{ row.hospcode }}</td>
+                }
+                @if (showHospcodeColumn && editId === row.id) {
+                  <td>
+                    @if (isSuperAdmin) {
+                      <input
+                        [(ngModel)]="editForm.hospcode"
+                        maxlength="10"
+                        placeholder="Hospcode"
+                        />
+                    }
+                    @if (!isSuperAdmin) {
+                      <select [(ngModel)]="editForm.hospcode">
+                        @for (hospcode of scopeHospcodes; track hospcode) {
+                          <option [ngValue]="hospcode">{{ hospcode }}</option>
+                        }
+                      </select>
+                    }
+                  </td>
+                }
+                <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
+                @if (canManage) {
+                  <td class="actions">
+                    @if (editId === row.id) {
+                      <button (click)="saveEdit(row.id)">Save</button>
+                      <button class="ghost" (click)="cancelEdit()">Cancel</button>
+                    } @else {
+                      <button class="ghost" (click)="startEdit(row)">Edit</button>
+                      <button class="danger" (click)="remove(row.id)">Delete</button>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <p class="empty">ไม่พบข้อมูลบุคลากร</p>
+      }
+    
+    
+      @if (total > 0) {
+        <div class="pagination">
+          <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
+          <div class="pager-actions">
+            <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
+            <span>Page {{ page }} / {{ totalPages }}</span>
+            <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
+          </div>
+        </div>
+      }
     </section>
-  `,
+    `,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }

@@ -15,8 +15,7 @@
     "moduleResolution": "bundler",
     "experimentalDecorators": true,
     "target": "ES2022",
-    "module": "ES2022",
-    "lib": ["ES2022", "DOM"]
+    "module": "ES2022"
   },
   "angularCompilerOptions": {
     "strictInjectionParameters": true,
