@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
@@ -13,6 +13,7 @@ import { AuthService } from '../../core/auth/auth.service';
       </div>
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [
     `
     .login-page { min-height: 100vh; display: grid; place-items: center; padding: 20px; }

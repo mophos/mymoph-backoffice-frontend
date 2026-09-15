@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-not-found',
@@ -9,6 +9,7 @@ import { Component } from '@angular/core';
       <p>ไม่พบหน้าที่ต้องการ</p>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: ['.state { padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }']
 })
 export class NotFoundComponent {}

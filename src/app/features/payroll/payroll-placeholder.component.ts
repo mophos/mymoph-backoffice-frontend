@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 import { API_BASE_URL } from '../../core/services/api.config';
@@ -18,6 +18,7 @@ import { API_BASE_URL } from '../../core/services/api.config';
       </ul>
     </section>
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: ['.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }']
 })
 export class PayrollPlaceholderComponent implements OnInit {

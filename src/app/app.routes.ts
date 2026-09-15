@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { Router, Routes, type CanActivateFn } from '@angular/router';
 import { map } from 'rxjs/operators';
 import { authGuard } from './core/guards/auth.guard';
@@ -18,7 +18,8 @@ import { TaxManagementComponent } from './features/tax/tax-management.component'
 import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
 import { MymophUsersManagementComponent } from './features/mymoph-users/mymoph-users-management.component';
 
-@Component({ standalone: true, template: '' })
+@Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
+ template: '' })
 class EmptyComponent {}
 
 const defaultRouteGuard: CanActivateFn = () => {

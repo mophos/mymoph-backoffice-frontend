@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 
@@ -10,6 +10,7 @@ import { AuthService } from '../../core/auth/auth.service';
       <p>กำลังยืนยันตัวตน...</p>
     </section>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: ['.callback { min-height: 100vh; display: grid; place-items: center; }']
 })
 export class AuthCallbackComponent {

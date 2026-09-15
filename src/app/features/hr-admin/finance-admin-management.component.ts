@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { FinanceAdminService } from './finance-admin.service';
@@ -91,6 +91,7 @@ interface FinanceAdminRow {
       }
     </section>
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }

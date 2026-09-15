@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PDFDocument } from 'pdf-lib';
@@ -396,6 +396,7 @@ type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
       </section>
     }
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [
         `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }

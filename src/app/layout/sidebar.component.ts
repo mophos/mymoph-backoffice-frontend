@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
@@ -35,6 +35,7 @@ import { MenuItem } from '../core/models/auth.models';
       <button class="logout" (click)="logout()">Logout</button>
     </aside>
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [
         `
     .sidebar {

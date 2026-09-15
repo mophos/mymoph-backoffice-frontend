@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { AsyncPipe } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from './sidebar.component';
@@ -25,6 +25,7 @@ import { AuthService } from '../core/auth/auth.service';
       </div>
     }
     `,
+    changeDetection: ChangeDetectionStrategy.Eager,
     styles: [
         `
     .shell { display: grid; grid-template-columns: clamp(300px, 26vw, 360px) 1fr; min-height: 100vh; }

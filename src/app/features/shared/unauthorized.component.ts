@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
@@ -11,6 +11,7 @@ import { AuthService } from '../../core/auth/auth.service';
       <button (click)="logout()">Logout</button>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   styles: [`
     :host {
       min-height: 100vh;
