@@ -31,10 +31,9 @@ type UploadPreviewMode = 'individual' | 'batch';
 type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
 
 @Component({
-  selector: 'app-tax-management',
-  standalone: true,
-  imports: [NgIf, NgFor, FormsModule, DatePipe],
-  template: `
+    selector: 'app-tax-management',
+    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    template: `
     <section class="card">
       <h2>ใบรับรองภาษี (Tax)</h2>
       <p class="note">ใช้สิทธิ์เดียวกับ Payroll | ชื่อไฟล์มาตรฐาน: {{ selectedYearShortPreview }}_เลขบัตร_ลำดับ.pdf</p>
@@ -353,8 +352,8 @@ type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
     h2, h3, h4 { margin: 0 0 8px; line-height: 1.2; }
     .note { margin: 4px 0 8px; color: var(--muted); font-size: 0.86rem; }
@@ -413,7 +412,7 @@ type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
       .compact-table td.file-name { max-width: 220px; }
     }
     `
-  ]
+    ]
 })
 export class TaxManagementComponent implements OnInit, OnDestroy {
   years: TaxYearRow[] = [];

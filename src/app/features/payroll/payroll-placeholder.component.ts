@@ -4,10 +4,9 @@ import { NgFor } from '@angular/common';
 import { API_BASE_URL } from '../../core/services/api.config';
 
 @Component({
-  selector: 'app-payroll-placeholder',
-  standalone: true,
-  imports: [NgFor],
-  template: `
+    selector: 'app-payroll-placeholder',
+    imports: [NgFor],
+    template: `
     <section class="card">
       <h2>Payroll (Phase 2)</h2>
       <p>โครงพร้อมแล้ว: route guard + permission check + scope filter</p>
@@ -17,7 +16,7 @@ import { API_BASE_URL } from '../../core/services/api.config';
       </ul>
     </section>
   `,
-  styles: ['.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }']
+    styles: ['.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }']
 })
 export class PayrollPlaceholderComponent implements OnInit {
   rows: any[] = [];

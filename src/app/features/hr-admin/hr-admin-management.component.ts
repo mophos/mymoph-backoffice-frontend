@@ -13,10 +13,9 @@ interface HrAdminRow {
 }
 
 @Component({
-  selector: 'app-hr-admin-management',
-  standalone: true,
-  imports: [NgFor, NgIf, FormsModule],
-  template: `
+    selector: 'app-hr-admin-management',
+    imports: [NgFor, NgIf, FormsModule],
+    template: `
     <section class="card">
       <h2>HR Office Admin Management</h2>
       <p class="note">ผู้ใช้ 1 คนกำหนดได้หลาย role พร้อมกำหนด Hospcodes ได้</p>
@@ -93,8 +92,8 @@ interface HrAdminRow {
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
     .note { margin: 6px 0 14px; color: var(--muted); font-size: 0.9rem; }
     .error { margin: 6px 0 14px; color: var(--danger); font-size: 0.92rem; }
@@ -132,7 +131,7 @@ interface HrAdminRow {
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class HrAdminManagementComponent implements OnInit {
   readonly roleOptions = ['hr', 'admin_affairs', 'it_office', 'super_admin', 'super_admin_affairs', 'user_mymoph'];

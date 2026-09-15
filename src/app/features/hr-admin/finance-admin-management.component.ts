@@ -13,10 +13,9 @@ interface FinanceAdminRow {
 }
 
 @Component({
-  selector: 'app-finance-admin-management',
-  standalone: true,
-  imports: [NgFor, NgIf, FormsModule],
-  template: `
+    selector: 'app-finance-admin-management',
+    imports: [NgFor, NgIf, FormsModule],
+    template: `
     <section class="card">
       <h2>Finance Office Admin Management</h2>
       <p class="note">หน้านี้จัดการเฉพาะสิทธิ์ admin_affairs เท่านั้น</p>
@@ -81,8 +80,8 @@ interface FinanceAdminRow {
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
     .note { margin: 6px 0 14px; color: var(--muted); font-size: 0.9rem; }
     .error { margin: 6px 0 14px; color: var(--danger); font-size: 0.92rem; }
@@ -104,7 +103,7 @@ interface FinanceAdminRow {
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class FinanceAdminManagementComponent implements OnInit {
   readonly pageSizeOptions = [10, 20, 50];

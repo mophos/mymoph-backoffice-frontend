@@ -5,10 +5,9 @@ import { SidebarComponent } from './sidebar.component';
 import { AuthService } from '../core/auth/auth.service';
 
 @Component({
-  selector: 'app-shell',
-  standalone: true,
-  imports: [RouterOutlet, SidebarComponent, NgIf, AsyncPipe],
-  template: `
+    selector: 'app-shell',
+    imports: [RouterOutlet, SidebarComponent, NgIf, AsyncPipe],
+    template: `
     <div class="shell" *ngIf="authService.user$ | async as user">
       <app-sidebar [userName]="user.displayName || user.cid" [menus]="user.menus" />
       <main class="content">
@@ -25,8 +24,8 @@ import { AuthService } from '../core/auth/auth.service';
       </main>
     </div>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .shell { display: grid; grid-template-columns: clamp(300px, 26vw, 360px) 1fr; min-height: 100vh; }
     .content { padding: 18px 24px; }
     .topbar { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 18px; box-shadow: var(--shadow); }
@@ -39,7 +38,7 @@ import { AuthService } from '../core/auth/auth.service';
       .content { padding: 12px; }
     }
     `
-  ]
+    ]
 })
 export class ShellComponent {
   constructor(public readonly authService: AuthService) {}

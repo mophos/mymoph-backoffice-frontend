@@ -5,10 +5,9 @@ import { AuthService } from '../../core/auth/auth.service';
 import { MymophUserRow, MymophUsersService } from './mymoph-users.service';
 
 @Component({
-  selector: 'app-mymoph-users-management',
-  standalone: true,
-  imports: [NgIf, NgFor, FormsModule],
-  template: `
+    selector: 'app-mymoph-users-management',
+    imports: [NgIf, NgFor, FormsModule],
+    template: `
     <section class="card">
       <header class="page-head">
         <div>
@@ -119,8 +118,8 @@ import { MymophUserRow, MymophUsersService } from './mymoph-users.service';
       </section>
     </div>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
     .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
     h2, h3 { margin: 0; }
@@ -163,7 +162,7 @@ import { MymophUserRow, MymophUsersService } from './mymoph-users.service';
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class MymophUsersManagementComponent implements OnInit {
   readonly pageSizeOptions = [10, 20, 50];

@@ -5,10 +5,9 @@ import { AuthService } from '../../core/auth/auth.service';
 import { PersonnelRow, PersonnelService } from './personnel.service';
 
 @Component({
-  selector: 'app-personnel-management',
-  standalone: true,
-  imports: [NgIf, NgFor, FormsModule, DatePipe],
-  template: `
+    selector: 'app-personnel-management',
+    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    template: `
     <section class="card">
       <h2>ข้อมูลบุคลากร</h2>
       <p class="note">ใช้สำหรับอ้างอิงในการออกรายงานต่างๆ</p>
@@ -129,8 +128,8 @@ import { PersonnelRow, PersonnelService } from './personnel.service';
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
     .note { margin: 6px 0 12px; color: var(--muted); font-size: 0.9rem; }
     .error { margin: 6px 0 12px; color: var(--danger); font-size: 0.9rem; }
@@ -205,7 +204,7 @@ import { PersonnelRow, PersonnelService } from './personnel.service';
       .upload-controls { align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class PersonnelManagementComponent implements OnInit {
   readonly pageSizeOptions = [10, 20, 50];

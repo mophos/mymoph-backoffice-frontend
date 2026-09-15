@@ -5,10 +5,9 @@ import { AuthService } from '../../core/auth/auth.service';
 import { AttendanceService } from './attendance.service';
 
 @Component({
-  selector: 'app-attendance-dashboard',
-  standalone: true,
-  imports: [NgIf, NgFor, FormsModule],
-  template: `
+    selector: 'app-attendance-dashboard',
+    imports: [NgIf, NgFor, FormsModule],
+    template: `
     <section class="card">
       <header>
         <h2>Attendance Dashboard</h2>
@@ -97,8 +96,8 @@ import { AttendanceService } from './attendance.service';
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
     h2 { margin: 0 0 12px; }
     h3 { margin: 0 0 10px; font-size: 1rem; color: var(--brand-strong); }
@@ -165,7 +164,7 @@ import { AttendanceService } from './attendance.service';
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class AttendanceDashboardComponent implements OnInit {
   page = 1;

@@ -7,10 +7,9 @@ import { OfficeSettingRow, OfficeSettingsService } from './office-settings.servi
 type StatusFilter = 'all' | '1' | '0';
 
 @Component({
-  selector: 'app-office-settings',
-  standalone: true,
-  imports: [NgIf, NgFor, FormsModule, DatePipe],
-  template: `
+    selector: 'app-office-settings',
+    imports: [NgIf, NgFor, FormsModule, DatePipe],
+    template: `
     <section class="card">
       <h2>Office Settings</h2>
       <p class="note">จัดการข้อมูลหน่วยงาน/โรงพยาบาลตามสิทธิ์และขอบเขตหน่วยงานของผู้ใช้</p>
@@ -123,8 +122,8 @@ type StatusFilter = 'all' | '1' | '0';
       </div>
     </section>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
     .note { margin: 6px 0 12px; color: var(--muted); font-size: 0.9rem; }
     .error { margin: 6px 0 12px; color: var(--danger); font-size: 0.9rem; }
@@ -169,7 +168,7 @@ type StatusFilter = 'all' | '1' | '0';
       .pagination { flex-direction: column; align-items: flex-start; }
     }
     `
-  ]
+    ]
 })
 export class OfficeSettingsComponent implements OnInit {
   readonly pageSizeOptions = [10, 20, 50];

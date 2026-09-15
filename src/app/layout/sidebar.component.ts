@@ -5,10 +5,9 @@ import { AuthService } from '../core/auth/auth.service';
 import { MenuItem } from '../core/models/auth.models';
 
 @Component({
-  selector: 'app-sidebar',
-  standalone: true,
-  imports: [NgFor, RouterLink, RouterLinkActive],
-  template: `
+    selector: 'app-sidebar',
+    imports: [NgFor, RouterLink, RouterLinkActive],
+    template: `
     <aside class="sidebar">
       <div class="brand">
         <div class="logo">MY</div>
@@ -35,8 +34,8 @@ import { MenuItem } from '../core/models/auth.models';
       <button class="logout" (click)="logout()">Logout</button>
     </aside>
   `,
-  styles: [
-    `
+    styles: [
+        `
     .sidebar {
       background: linear-gradient(160deg, #0b4f4a, #136a63 45%, #1b8b80 100%);
       color: #ffffff;
@@ -101,7 +100,7 @@ import { MenuItem } from '../core/models/auth.models';
       cursor: pointer;
     }
     `
-  ]
+    ]
 })
 export class SidebarComponent {
   private readonly iconMap: Record<string, string> = {
