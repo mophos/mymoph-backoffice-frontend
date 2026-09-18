@@ -1,0 +1,35 @@
+/*
+ * Tailwind v4 — ตั้งใจไม่ include preflight.css
+ * preflight จะ reset base style ของ button/input/heading ซึ่งทั้ง Angular Material
+ * และหน้าเดิมที่เขียน CSS มือไว้พึ่งพาอยู่ การ reset จะทำให้หน้าเดิมพังทันที
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/*
+ * ไม่สแกนไฟล์ .ts
+ * component เดิมเก็บ CSS ไว้ใน styles: [] ภายใน .ts ทำให้ Tailwind เก็บชื่อ
+ * CSS property (table, border-collapse, resize) ไปสร้างเป็น utility ที่ไม่มีใครใช้
+ * component ใหม่แยก template เป็น .html จึงยังถูกสแกนครบ
+ * ข้อแลกเปลี่ยน: class ที่ผูกแบบ dynamic ใน .ts จะไม่ถูกตรวจพบ ต้องเขียนใน template
+ */
+@source not './app/**/*.ts';
+
+@theme {
+  /* สีแบรนด์ชุดเดียวกับ --brand: #0f766e ใน styles.scss และ palette ของ Material */
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2e;
+
+  --font-sans: 'Noto Sans Thai Variable', 'Noto Sans Thai', 'Sarabun', sans-serif;
+}

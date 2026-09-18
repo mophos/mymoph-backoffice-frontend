@@ -24,7 +24,8 @@
             ],
             "styles": [
               "node_modules/@fontsource-variable/noto-sans-thai/wght.css",
-              "src/styles.scss"
+              "src/styles.scss",
+              "src/tailwind.css"
             ]
           },
           "configurations": {
