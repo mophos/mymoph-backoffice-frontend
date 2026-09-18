@@ -17,7 +17,7 @@
 
 body {
   margin: 0;
-  font-family: "Noto Sans Thai", "Sarabun", sans-serif;
+  font-family: 'Noto Sans Thai Variable', 'Noto Sans Thai', 'Sarabun', sans-serif;
   background: radial-gradient(circle at 20% 20%, #f7fffd, #eef4f2 55%, #e8f0ee 100%);
   color: var(--text);
 }

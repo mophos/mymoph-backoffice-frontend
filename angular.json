@@ -23,6 +23,7 @@
               "src/assets"
             ],
             "styles": [
+              "node_modules/@fontsource-variable/noto-sans-thai/wght.css",
               "src/styles.css"
             ]
           },
