@@ -24,7 +24,6 @@
             ],
             "styles": [
               "node_modules/@fontsource-variable/noto-sans-thai/wght.css",
-              "node_modules/primeicons/primeicons.css",
               "src/styles.css"
             ]
           },
