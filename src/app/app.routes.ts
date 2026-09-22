@@ -17,6 +17,7 @@ import { PayrollPlaceholderComponent } from './features/payroll/payroll-placehol
 import { TaxManagementComponent } from './features/tax/tax-management.component';
 import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
 import { MymophUsersManagementComponent } from './features/mymoph-users/mymoph-users-management.component';
+import { FinanceUserAdminComponent } from './features/user-admin/finance-user-admin.component';
 
 @Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
  template: '' })
@@ -54,6 +55,13 @@ export const appRoutes: Routes = [
       {
         path: 'finance-admin',
         component: FinanceAdminManagementComponent,
+        canActivate: [permissionGuard],
+        data: { permission: 'finance_admin.manage' }
+      },
+      // หน้าใหม่ใช้ URL แยกระหว่างพัฒนา ของเดิมที่ /finance-admin ยังทำงานตามปกติ
+      {
+        path: 'finance-user-admin',
+        component: FinanceUserAdminComponent,
         canActivate: [permissionGuard],
         data: { permission: 'finance_admin.manage' }
       },

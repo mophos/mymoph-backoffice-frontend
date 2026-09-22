@@ -1,0 +1,110 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1>ผู้ใช้และสิทธิ์: การเงิน</h1>
+      <p class="subtitle">
+        แต่งตั้งเจ้าหน้าที่การเงินประจำหน่วยงาน หน้านี้มอบได้เฉพาะบทบาท
+        <code>admin_affairs</code> ซึ่งเป็นสิทธิ์เข้าเมนู Payroll และใบรับรองภาษี
+      </p>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <mat-form-field appearance="outline" class="grow">
+      <mat-label>ค้นหา</mat-label>
+      <input matInput
+             [ngModel]="searchText()"
+             (ngModelChange)="searchText.set($event)"
+             (keyup.enter)="onSearch()"
+             placeholder="เลขบัตรประชาชน ชื่อ หรืออีเมล" />
+      <mat-icon matSuffix aria-hidden="true">search</mat-icon>
+    </mat-form-field>
+
+    <button matButton="filled" (click)="onSearch()">ค้นหา</button>
+    <button matButton (click)="onClearSearch()">ล้าง</button>
+  </div>
+
+  <form class="form-card" *hasPermission="'finance_admin.manage'" (ngSubmit)="save()">
+    <h2>{{ editing() ? 'แก้ไขหน่วยงานที่รับผิดชอบ' : 'แต่งตั้งเจ้าหน้าที่การเงิน' }}</h2>
+
+    @if (editing(); as target) {
+      <div class="editing-banner">
+        <mat-icon aria-hidden="true">edit</mat-icon>
+        <span>กำลังแก้ไข <strong>{{ fullName(target) }}</strong></span>
+        <button matButton type="button" (click)="cancelEdit()">ยกเลิก</button>
+      </div>
+    }
+
+    <div class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>เลขบัตรประชาชน</mat-label>
+        <input matInput
+               inputmode="numeric"
+               maxlength="13"
+               [ngModel]="formCid()"
+               (ngModelChange)="formCid.set($event)"
+               [readonly]="!!editing()"
+               name="cid"
+               placeholder="13 หลัก" />
+        @if (editing()) {
+          <mat-hint>แก้เลขบัตรที่นี่ไม่ได้ ถ้าเลขผิดต้องถอนสิทธิ์แล้วแต่งตั้งใหม่</mat-hint>
+        }
+      </mat-form-field>
+
+      @if (isGlobalScope()) {
+        <mat-form-field appearance="outline">
+          <mat-label>รหัสหน่วยงาน</mat-label>
+          <input matInput
+                 [ngModel]="formHospcodes().join(', ')"
+                 (ngModelChange)="onHospcodesText($event)"
+                 name="hospcodesText"
+                 placeholder="คั่นด้วยจุลภาค" />
+          <mat-hint>บัญชีของคุณมีขอบเขตทุกหน่วยงาน จึงต้องระบุรหัสเอง</mat-hint>
+        </mat-form-field>
+      } @else {
+        <mat-form-field appearance="outline">
+          <mat-label>หน่วยงานที่รับผิดชอบ</mat-label>
+          <mat-select multiple
+                      [ngModel]="formHospcodes()"
+                      (ngModelChange)="formHospcodes.set($event)"
+                      name="hospcodes">
+            @for (code of hospcodeOptions(); track code) {
+              <mat-option [value]="code">{{ code }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>เลือกได้เฉพาะหน่วยงานที่คุณดูแล</mat-hint>
+        </mat-form-field>
+      }
+
+      <button matButton="filled" type="submit" [disabled]="!canSubmit() || loading()">
+        {{ editing() ? 'บันทึกการแก้ไข' : 'แต่งตั้ง' }}
+      </button>
+    </div>
+
+    @if (!canSubmit() && formCid()) {
+      <p class="hint-warning">
+        ต้องกรอกเลขบัตรครบ 13 หลักและเลือกหน่วยงานอย่างน้อยหนึ่งแห่ง
+        การบันทึกโดยไม่มีหน่วยงานจะเป็นการถอนขอบเขตทั้งหมดของบัญชีนั้น
+      </p>
+    }
+  </form>
+
+  <app-data-table
+    [columns]="columns"
+    [rows]="rows()"
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [loading]="loading()"
+    [errorMessage]="errorMessage()"
+    emptyMessage="ยังไม่มีเจ้าหน้าที่การเงินในหน่วยงานที่คุณดูแล"
+    (pageChange)="onPageChange($event)">
+
+    <ng-template #rowActions let-row>
+      <button matButton type="button" (click)="startEdit(row)">แก้ไข</button>
+      <button matButton type="button" class="danger-text" (click)="confirmDeactivate(row)">
+        ถอนสิทธิ์
+      </button>
+    </ng-template>
+  </app-data-table>
+</section>

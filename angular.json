@@ -24,6 +24,7 @@
             ],
             "styles": [
               "node_modules/@fontsource-variable/noto-sans-thai/wght.css",
+              "node_modules/@fontsource/material-icons/index.css",
               "src/styles.scss",
               "src/tailwind.css"
             ]

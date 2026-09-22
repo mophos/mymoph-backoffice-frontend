@@ -1,0 +1,61 @@
+.page { display: grid; gap: 1.25rem; }
+
+.page-head h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+
+.subtitle {
+  margin: 0;
+  color: var(--muted, #5d6f6c);
+  line-height: 1.6;
+  max-width: 48rem;
+}
+
+.subtitle code {
+  background: var(--surface-2, #eef4f2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.toolbar { display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; }
+.toolbar .grow { flex: 1 1 22rem; }
+
+.form-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #d9e6e2);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.form-card h2 { margin: 0 0 1rem; font-size: 1.1rem; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(12rem, 18rem) minmax(14rem, 24rem) auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.editing-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-2, #eef4f2);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.hint-warning {
+  margin: 0.75rem 0 0;
+  color: var(--danger, #b42318);
+  line-height: 1.6;
+}
+
+.danger-text { color: var(--danger, #b42318); }
+
+:host ::ng-deep .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 900px) {
+  .form-grid { grid-template-columns: 1fr; }
+}
