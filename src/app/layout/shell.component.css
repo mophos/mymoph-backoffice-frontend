@@ -1,0 +1,14 @@
+:host { display: block; }
+
+/*
+ * Material ตั้งพื้นหลังของ sidenav-container เป็นสีของธีม
+ * แต่ระบบเดิมใช้ radial-gradient บน body เป็นเอกลักษณ์ จึงให้โปร่งเพื่อให้เห็นทะลุ
+ */
+:host ::ng-deep .mat-drawer-container,
+:host ::ng-deep .mat-drawer-content {
+  background: transparent;
+}
+
+:host ::ng-deep .mat-drawer {
+  background: var(--surface);
+}

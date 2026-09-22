@@ -11,7 +11,6 @@ import { UnauthorizedComponent } from './features/shared/unauthorized.component'
 import { NotFoundComponent } from './features/shared/not-found.component';
 import { AttendanceDashboardComponent } from './features/attendance/attendance-dashboard.component';
 import { HrAdminManagementComponent } from './features/hr-admin/hr-admin-management.component';
-import { FinanceAdminManagementComponent } from './features/hr-admin/finance-admin-management.component';
 import { PersonnelManagementComponent } from './features/personnel/personnel-management.component';
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
 import { TaxManagementComponent } from './features/tax/tax-management.component';
@@ -53,18 +52,13 @@ export const appRoutes: Routes = [
         data: { permission: 'user_admin.manage' }
       },
       {
-        path: 'finance-admin',
-        component: FinanceAdminManagementComponent,
-        canActivate: [permissionGuard],
-        data: { permission: 'finance_admin.manage' }
-      },
-      // หน้าใหม่ใช้ URL แยกระหว่างพัฒนา ของเดิมที่ /finance-admin ยังทำงานตามปกติ
-      {
         path: 'finance-user-admin',
         component: FinanceUserAdminComponent,
         canActivate: [permissionGuard],
         data: { permission: 'finance_admin.manage' }
       },
+      // URL เดิมยังใช้ได้ ส่งต่อไปหน้าใหม่ เพื่อไม่ให้ bookmark ของผู้ใช้เสีย
+      { path: 'finance-admin', redirectTo: 'finance-user-admin', pathMatch: 'full' },
       {
         path: 'mymoph-users',
         component: MymophUsersManagementComponent,

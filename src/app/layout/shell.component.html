@@ -1,0 +1,77 @@
+@if (user(); as currentUser) {
+  <mat-sidenav-container class="h-dvh">
+    <mat-sidenav
+      class="w-72 border-e border-(--line)"
+      [mode]="isHandset() ? 'over' : 'side'"
+      [opened]="isHandset() ? drawerOpen() : true">
+
+      <div class="flex items-center gap-3 px-4 py-5">
+        <div class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-700 font-bold text-white">
+          MY
+        </div>
+        <div class="min-w-0">
+          <p class="m-0 truncate font-semibold">MyMOPH Back Office</p>
+          <p class="m-0 truncate text-sm text-(--muted)">
+            {{ currentUser.displayName || currentUser.cid }}
+          </p>
+        </div>
+      </div>
+
+      <mat-divider />
+
+      <mat-nav-list>
+        @for (menu of currentUser.menus; track menu.id) {
+          <a mat-list-item
+             [routerLink]="menu.path"
+             routerLinkActive
+             #link="routerLinkActive"
+             [activated]="link.isActive"
+             (click)="onNavigate()">
+            <mat-icon matListItemIcon aria-hidden="true">{{ menu.icon }}</mat-icon>
+            <span matListItemTitle>{{ menu.label }}</span>
+          </a>
+        } @empty {
+          <p class="px-4 py-3 text-sm text-(--muted)">
+            บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าเมนูใด
+          </p>
+        }
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="bg-transparent">
+      <mat-toolbar class="sticky top-0 z-10 gap-2 border-b border-(--line) bg-(--surface)">
+        @if (isHandset()) {
+          <button matIconButton (click)="toggleDrawer()" aria-label="เปิดปิดเมนู">
+            <mat-icon>menu</mat-icon>
+          </button>
+        }
+
+        <span class="grow"></span>
+
+        <button matButton [matMenuTriggerFor]="accountMenu" class="gap-2">
+          <mat-icon>account_circle</mat-icon>
+          <span class="hidden sm:inline">{{ currentUser.displayName || currentUser.cid }}</span>
+        </button>
+
+        <mat-menu #accountMenu="matMenu">
+          <div class="px-4 py-3">
+            <p class="m-0 font-semibold">{{ currentUser.displayName || currentUser.cid }}</p>
+            <p class="m-0 mt-1 text-sm text-(--muted)">
+              บทบาท: {{ currentUser.roles.join(', ') || 'ไม่มีบทบาท' }}
+            </p>
+            <p class="m-0 text-sm text-(--muted)">ขอบเขต: {{ scopeLabel() }}</p>
+          </div>
+          <mat-divider />
+          <button mat-menu-item (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            <span>ออกจากระบบ</span>
+          </button>
+        </mat-menu>
+      </mat-toolbar>
+
+      <main class="mx-auto max-w-[110rem] p-4 md:p-6">
+        <router-outlet />
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+}
