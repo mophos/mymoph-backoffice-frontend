@@ -1,0 +1,38 @@
+<h2 mat-dialog-title class="flex items-center gap-2">
+  @if (data.danger) {
+    <mat-icon class="text-red-700" aria-hidden="true">warning</mat-icon>
+  }
+  {{ data.title }}
+</h2>
+
+<mat-dialog-content>
+  <p class="message">{{ data.message }}</p>
+
+  @if (data.consequences?.length) {
+    <div class="consequences">
+      <p class="consequences-title">สิ่งที่จะเกิดขึ้น</p>
+      <ul>
+        @for (item of data.consequences; track item) {
+          <li>{{ item }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (data.warning) {
+    <p class="warning">{{ data.warning }}</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton (click)="cancel()">
+    {{ data.cancelLabel || 'ยกเลิก' }}
+  </button>
+  <button
+    matButton="filled"
+    [color]="data.danger ? 'warn' : 'primary'"
+    cdkFocusInitial
+    (click)="confirm()">
+    {{ data.confirmLabel || 'ยืนยัน' }}
+  </button>
+</mat-dialog-actions>
