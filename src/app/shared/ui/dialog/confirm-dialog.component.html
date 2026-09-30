@@ -1,0 +1,49 @@
+<div class="rounded-xl bg-(--surface) shadow-2xl"
+     role="alertdialog"
+     aria-modal="true"
+     [attr.aria-labelledby]="'confirm-title'">
+
+  <div class="flex items-start gap-3 border-b border-(--line) px-5 py-4">
+    @if (data.danger) {
+      <span class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-red-100 text-red-700"
+            aria-hidden="true">!</span>
+    }
+    <h2 id="confirm-title" class="m-0 text-lg font-semibold">{{ data.title }}</h2>
+  </div>
+
+  <div class="grid gap-4 px-5 py-4">
+    <p class="m-0 leading-relaxed">{{ data.message }}</p>
+
+    @if (data.consequences?.length) {
+      <div class="rounded-lg border border-(--line) bg-(--surface-2) px-4 py-3">
+        <p class="m-0 mb-2 font-semibold">สิ่งที่จะเกิดขึ้น</p>
+        <ul class="m-0 grid gap-1 ps-5">
+          @for (item of data.consequences; track item) {
+            <li class="leading-relaxed">{{ item }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (data.warning) {
+      <p class="m-0 leading-relaxed font-medium text-(--danger)">{{ data.warning }}</p>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-(--line) px-5 py-4">
+    <button type="button"
+            class="btn-base btn-ghost"
+            (click)="cancel()">
+      {{ data.cancelLabel || 'ยกเลิก' }}
+    </button>
+
+    <button type="button"
+            cdkFocusInitial
+            class="btn-base"
+            [class.btn-danger-solid]="data.danger"
+            [class.btn-primary]="!data.danger"
+            (click)="confirm()">
+      {{ data.confirmLabel || 'ยืนยัน' }}
+    </button>
+  </div>
+</div>

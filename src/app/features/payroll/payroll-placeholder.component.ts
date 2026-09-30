@@ -1,34 +1,39 @@
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-
 import { API_BASE_URL } from '../../core/services/api.config';
 
+interface PayrollSummaryRow {
+  hospcode: string;
+  pay_month: string;
+  status: string;
+}
+
+/**
+ * ยังไม่ได้เขียนหน้าจริง รอบนี้ปรับเฉพาะหัวข้อให้เข้าชุดกับเมนูที่เขียนใหม่แล้ว
+ *
+ * ยังเรียก /payroll/summary เหมือนเดิมเพื่อพิสูจน์ว่า guard และ scope filter
+ * ทำงานครบเส้นทาง ปัจจุบัน payroll_runs ยังไม่มีข้อมูลสักแถว
+ */
 @Component({
-    selector: 'app-payroll-placeholder',
-    imports: [],
-    template: `
-    <section class="card">
-      <h2>Payroll (Phase 2)</h2>
-      <p>โครงพร้อมแล้ว: route guard + permission check + scope filter</p>
-    
-      <ul>
-        @for (item of rows; track item) {
-          <li>{{ item.hospcode }} | {{ item.pay_month }} | {{ item.status }}</li>
-        }
-      </ul>
-    </section>
-    `,
-    changeDetection: ChangeDetectionStrategy.Eager,
-    styles: ['.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }']
+  selector: 'app-payroll-placeholder',
+  templateUrl: './payroll-placeholder.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PayrollPlaceholderComponent implements OnInit {
-  rows: any[] = [];
+export class PayrollPlaceholderComponent {
+  private readonly http = inject(HttpClient);
 
-  constructor(private readonly http: HttpClient) {}
+  readonly rows = signal<PayrollSummaryRow[]>([]);
+  readonly loaded = signal(false);
 
-  ngOnInit(): void {
-    this.http.get<any>(`${API_BASE_URL}/payroll/summary`, { withCredentials: true }).subscribe((res) => {
-      this.rows = res.data || [];
-    });
+  constructor() {
+    this.http
+      .get<{ data?: PayrollSummaryRow[] }>(`${API_BASE_URL}/payroll/summary`, { withCredentials: true })
+      .subscribe({
+        next: (res) => {
+          this.rows.set(res?.data ?? []);
+          this.loaded.set(true);
+        },
+        error: () => this.loaded.set(true)
+      });
   }
 }

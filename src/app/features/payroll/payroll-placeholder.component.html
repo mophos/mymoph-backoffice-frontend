@@ -1,0 +1,26 @@
+<section class="grid gap-5">
+  <header>
+    <h1 class="m-0 mb-1 text-2xl font-bold">เงินเดือน</h1>
+    <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+      ดูสรุปการจ่ายเงินเดือนของหน่วยงานที่รับผิดชอบ
+    </p>
+  </header>
+
+  <div class="grid gap-3 rounded-xl border border-dashed border-(--line) bg-(--surface) px-6 py-10 text-center">
+    <p class="m-0 text-lg font-medium">ยังไม่เปิดให้ใช้งาน</p>
+    <p class="m-0 leading-relaxed text-(--muted)">
+      เมนูนี้เตรียมโครงไว้แล้วทั้งการตรวจสิทธิ์และการกรองตามหน่วยงาน<br />
+      รอข้อมูลการจ่ายเงินเดือนเข้าระบบก่อนจึงจะเปิดใช้
+    </p>
+
+    @if (loaded()) {
+      <p class="m-0 text-sm text-(--muted)">
+        @if (rows().length) {
+          พบข้อมูลรอบการจ่าย {{ rows().length }} รายการในหน่วยงานที่คุณดูแล
+        } @else {
+          ยังไม่มีข้อมูลรอบการจ่ายในหน่วยงานที่คุณดูแล
+        }
+      </p>
+    }
+  </div>
+</section>

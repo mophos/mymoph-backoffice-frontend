@@ -1,0 +1,74 @@
+<div class="grid gap-2">
+  <label [attr.for]="'office-query'" class="text-sm font-medium">{{ label() }}</label>
+
+  <div class="relative max-w-2xl" cdkOverlayOrigin #origin="cdkOverlayOrigin">
+    <input id="office-query"
+           #queryInput
+           type="text"
+           role="combobox"
+           autocomplete="off"
+           aria-autocomplete="list"
+           aria-controls="office-listbox"
+           [attr.aria-expanded]="open()"
+           [attr.aria-activedescendant]="open() && activeIndex() >= 0 ? optionId(activeIndex()) : null"
+           class="w-full rounded-lg border border-(--line) bg-(--surface) px-3 py-2 pe-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-700"
+           placeholder="พิมพ์ชื่อหรือรหัส เช่น โรงพยาบาลศรีสะเกษ หรือ 41124"
+           [value]="query()"
+           (input)="onType($any($event.target).value)"
+           (keydown)="onKeydown($event)" />
+
+    <span class="pointer-events-none absolute inset-y-0 end-3 grid place-items-center text-sm text-(--muted)">
+      {{ loading() ? 'กำลังค้น' : '⌕' }}
+    </span>
+  </div>
+
+  <ng-template cdkConnectedOverlay
+               [cdkConnectedOverlayOrigin]="origin"
+               [cdkConnectedOverlayOpen]="open()"
+               [cdkConnectedOverlayWidth]="origin.elementRef.nativeElement.offsetWidth"
+               (overlayOutsideClick)="close()"
+               (detach)="close()">
+    <ul id="office-listbox"
+        role="listbox"
+        class="max-h-80 overflow-y-auto rounded-lg border border-(--line) bg-(--surface) py-1 shadow-xl">
+      @for (office of options(); track office.hcode9; let i = $index) {
+        <li [id]="optionId(i)"
+            role="option"
+            [attr.aria-selected]="i === activeIndex()"
+            [attr.aria-disabled]="!office.code5"
+            class="cursor-pointer px-3 py-2"
+            [class.bg-brand-50]="i === activeIndex()"
+            [class.opacity-50]="!office.code5"
+            [class.cursor-not-allowed]="!office.code5"
+            (click)="pick(office)"
+            (mouseenter)="activeIndex.set(i)">
+          <span class="block leading-snug">{{ office.name }}</span>
+          <span class="block text-xs text-(--muted)">
+            <span class="font-mono">{{ office.hcode9 }}</span>
+            @if (office.province) { · {{ office.province }} }
+            @if (!office.code5) { · ยังไม่มีรหัส 5 หลัก เลือกไม่ได้ }
+          </span>
+        </li>
+      } @empty {
+        <li class="px-3 py-3 text-(--muted)">ไม่พบหน่วยงานที่ตรงกับคำค้น</li>
+      }
+    </ul>
+  </ng-template>
+
+  @if (selected().length) {
+    <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
+      @for (code of selected(); track code) {
+        <li class="flex max-w-full items-center gap-2 rounded-full border border-(--line) bg-(--surface-2) py-1 ps-3 pe-1 text-sm">
+          <span class="truncate">{{ nameFor(code) }}</span>
+          <span class="font-mono text-xs text-(--muted)">{{ codeFor(code) }}</span>
+          <button type="button"
+                  class="grid size-6 shrink-0 place-items-center rounded-full hover:bg-(--line) focus-visible:outline-2 focus-visible:outline-brand-700"
+                  [attr.aria-label]="'เอา ' + nameFor(code) + ' ออก'"
+                  (click)="remove(code)">×</button>
+        </li>
+      }
+    </ul>
+  } @else {
+    <p class="m-0 text-sm text-(--danger)">ยังไม่ได้เลือกหน่วยงาน</p>
+  }
+</div>

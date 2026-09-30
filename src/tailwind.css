@@ -33,3 +33,117 @@
 
   --font-sans: 'Noto Sans Thai Variable', 'Noto Sans Thai', 'Sarabun', sans-serif;
 }
+
+/*
+ * class ที่ถูกกำหนดในไฟล์ .ts (เช่น cellClass ของ column config ในตาราง)
+ * จะไม่ถูกสแกนเพราะเราตัด .ts ออกจากการสแกนไว้ข้างบน
+ * จึงต้องประกาศไว้ตรงนี้ให้ Tailwind สร้างให้แน่นอน
+ */
+@source inline("font-mono tabular-nums text-end whitespace-nowrap");
+
+/*
+ * ความกว้างของกล่อง dialog ส่งผ่าน panelClass ซึ่งอยู่ใน .ts ทั้งหมด
+ * จึงไม่ถูกสแกนเช่นกัน
+ *
+ * max-w-lg เป็นค่าเริ่มต้นใน AppDialogService ที่ dialog ทุกตัวได้รับ
+ * ก่อนหน้านี้ไม่เคยถูกสร้าง กล่องยืนยันจึงกว้างเต็มจอมาตลอด
+ * ส่วน max-w-3xl รอดมาได้เพราะบังเอิญมีใน .html ของหน้าอื่นด้วย
+ */
+@source inline("w-full px-4 max-w-{lg,xl,3xl}");
+
+/*
+ * ชุดปุ่มและช่องกรอกที่นิยามไว้ที่เดียว
+ *
+ * ก่อนหน้านี้เขียน class ของแต่ละปุ่มแยกกันทีละจุด ทำให้ปุ่มที่ทำหน้าที่
+ * เหมือนกันหน้าตาไม่เหมือนกัน เช่นปุ่มในแถวตารางบางตัวมีขอบบางตัวไม่มี
+ *
+ * กติกาที่ใช้
+ *   btn-primary       งานหลักหนึ่งเดียวของส่วนนั้น เช่น ค้นหา เพิ่มผู้ใช้ บันทึก
+ *   btn-outline       ปุ่มควบคุมที่ยืนเดี่ยว ไม่มีบริบทอื่นช่วยบอกว่ากดได้ เช่น แบ่งหน้า
+ *   btn-ghost         ปุ่มในแถวตารางหรือรายการหนาแน่น และปุ่มยกเลิก
+ *                     ไม่ใส่ขอบเพราะแถวมี hover บอกอยู่แล้ว ใส่ทุกตัวจะรกเกินไป
+ *   btn-danger        งานที่ย้อนกลับไม่ได้ โครงเดียวกับ ghost แต่เป็นสีเตือน
+ *   btn-danger-solid  ปุ่มยืนยันใน dialog ที่ต้องเด่นกว่าปุ่มยกเลิก
+ *
+ * ทุกตัวต้องใช้คู่กับ btn-base เพื่อให้ขนาด ระยะ focus ring และสถานะกดไม่ได้เหมือนกัน
+ */
+
+@utility btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: --spacing(2);
+  border-radius: var(--radius-lg);
+  padding-inline: --spacing(4);
+  padding-block: --spacing(2);
+  font-weight: 500;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  cursor: pointer;
+  /* ขอบโปร่งไว้เสมอ เพื่อให้ปุ่มที่มีขอบและไม่มีขอบสูงเท่ากัน */
+  border: 1px solid transparent;
+
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-700);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* ปุ่มขนาดเล็กสำหรับใช้ในแถวตาราง */
+@utility btn-sm {
+  padding-inline: --spacing(3);
+  padding-block: --spacing(1);
+}
+
+@utility btn-primary {
+  background-color: var(--color-brand-700);
+  color: white;
+  &:hover:not(:disabled) { background-color: var(--color-brand-800); }
+}
+
+@utility btn-outline {
+  border-color: var(--line);
+  background-color: var(--surface);
+  &:hover:not(:disabled) { background-color: var(--surface-2); }
+}
+
+@utility btn-ghost {
+  &:hover:not(:disabled) { background-color: var(--surface-2); }
+}
+
+@utility btn-danger {
+  color: var(--danger);
+  &:hover:not(:disabled) { background-color: color-mix(in srgb, var(--danger) 8%, transparent); }
+  &:focus-visible { outline-color: var(--danger); }
+}
+
+@utility btn-danger-solid {
+  background-color: var(--danger);
+  color: white;
+  &:hover:not(:disabled) { background-color: color-mix(in srgb, var(--danger) 85%, black); }
+  &:focus-visible { outline-color: var(--danger); }
+}
+
+@utility field-base {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background-color: var(--surface);
+  padding-inline: --spacing(3);
+  padding-block: --spacing(2);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-brand-700);
+    outline-offset: 1px;
+  }
+
+  &:read-only:not([type='search']) {
+    background-color: var(--surface-2);
+    color: var(--muted);
+  }
+}

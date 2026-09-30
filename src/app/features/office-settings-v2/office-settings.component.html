@@ -1,0 +1,77 @@
+<section class="grid gap-5">
+  <header>
+    <h1 class="m-0 mb-1 text-2xl font-bold">หน่วยงานและการลงเวลา</h1>
+    <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+      เรียกดูทะเบียนสถานพยาบาลและกำหนดว่าหน่วยงานไหนเปิดใช้การลงเวลาเข้าออกงาน
+      @if (isGlobalScope()) {
+        ทะเบียนนี้มาจากระบบกลางที่อัปเดตทุกวัน จึงแก้ชื่อหรือเพิ่มหน่วยงานจากที่นี่ไม่ได้
+      } @else {
+        แสดงเฉพาะหน่วยงานที่คุณดูแล
+      }
+    </p>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="w-full sm:w-96">
+      <label for="office-search" class="sr-only">ค้นหาหน่วยงาน</label>
+      <input id="office-search"
+             type="search"
+             autocomplete="off"
+             class="field-base"
+             placeholder="ค้นด้วยชื่อหน่วยงานหรือรหัส"
+             [value]="searchText()"
+             (input)="searchText.set($any($event.target).value)"
+             (keyup.enter)="onSearch()" />
+    </div>
+
+    <div class="flex items-center gap-2">
+      <label for="status-filter" class="text-sm text-(--muted)">สถานะลงเวลา</label>
+      <select id="status-filter"
+              class="field-base w-auto"
+              (change)="onStatusFilter($any($event.target).value)">
+        <option value="" [selected]="statusFilter() === ''">ทั้งหมด</option>
+        <option value="Y" [selected]="statusFilter() === 'Y'">เปิดใช้แล้ว</option>
+        <option value="N" [selected]="statusFilter() === 'N'">ยังไม่เปิด</option>
+      </select>
+    </div>
+
+    <button type="button"
+            class="btn-base btn-primary"
+            (click)="onSearch()">ค้นหา</button>
+
+    @if (searchText()) {
+      <button type="button"
+              class="btn-base btn-ghost text-(--muted)"
+              (click)="onClearSearch()">ล้าง</button>
+    }
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [loading]="loading()"
+    [errorMessage]="errorMessage()"
+    emptyMessage="ไม่พบหน่วยงานที่ตรงกับเงื่อนไข"
+    (pageChange)="onPageChange($event)">
+
+    <ng-template #rowActions let-row>
+      <div *hasPermission="'office_settings.update'" class="flex justify-end">
+        @if (row.checkinStatus === 'Y') {
+          <button type="button"
+                  class="btn-base btn-sm btn-danger"
+                  (click)="confirmToggle(row)">ปิดการลงเวลา</button>
+        } @else {
+          <button type="button"
+                  class="btn-base btn-sm btn-ghost"
+                  [title]="row.requiresAppSupport
+                    ? 'หน่วยงานนี้ยังไม่มีรหัส 5 หลัก เปิดได้แต่จะมีผลเมื่อแอป MyMOPH รองรับรหัสใหม่'
+                    : ''"
+                  (click)="confirmToggle(row)">เปิดใช้การลงเวลา</button>
+        }
+      </div>
+    </ng-template>
+  </app-table>
+</section>

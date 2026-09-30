@@ -1,9 +1,0 @@
-/*
- * เหลือเฉพาะสิ่งที่ Tailwind ทำไม่ได้
- * cell ของตารางถูก render อยู่ใน component ลูก utility class ในไฟล์นี้
- * จึงไปไม่ถึง ต้องใช้ ::ng-deep เจาะเข้าไป
- */
-:host ::ng-deep .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-}

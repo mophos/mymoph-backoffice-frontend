@@ -1,0 +1,97 @@
+<div class="overflow-hidden rounded-xl border border-(--line) bg-(--surface)">
+  <div class="relative">
+    @if (loading()) {
+      <div class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-brand-100" role="status" aria-label="กำลังโหลด">
+        <div class="h-full w-1/3 animate-pulse bg-brand-700"></div>
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <p class="m-0 flex items-center justify-center gap-2 bg-red-50 px-4 py-4 text-center text-(--danger)" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-start">
+        <thead>
+          <tr class="border-b border-(--line) bg-(--surface-2)">
+            @for (column of columns(); track column.key) {
+              <th scope="col"
+                  class="px-4 py-3 text-start text-sm font-semibold whitespace-nowrap"
+                  [class.hidden]="column.hideOnMobile"
+                  [class.md:table-cell]="column.hideOnMobile">
+                {{ column.header }}
+              </th>
+            }
+            @if (rowActions) {
+              <th scope="col" class="w-px px-4 py-3"><span class="sr-only">การจัดการ</span></th>
+            }
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (row of rows(); track $index) {
+            <tr class="border-b border-(--line) last:border-0 hover:bg-(--surface-2)">
+              @for (column of columns(); track column.key) {
+                <td class="px-4 py-3 align-top"
+                    [class]="column.cellClass || ''"
+                    [class.hidden]="column.hideOnMobile"
+                    [class.md:table-cell]="column.hideOnMobile">
+                  {{ column.cell(row) }}
+                </td>
+              }
+              @if (rowActions) {
+                <td class="w-px px-4 py-3 text-end whitespace-nowrap">
+                  <ng-container [ngTemplateOutlet]="rowActions" [ngTemplateOutletContext]="{ $implicit: row }" />
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (!rows().length && !loading() && !errorMessage()) {
+      <p class="m-0 px-4 py-10 text-center text-(--muted)">{{ emptyMessage() }}</p>
+    }
+  </div>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-(--line) px-4 py-3">
+    <div class="flex items-center gap-2 text-sm">
+      <label for="page-size" class="text-(--muted)">แสดงต่อหน้า</label>
+      <!--
+        ใช้ [selected] ที่ option ไม่ใช่ [value] ที่ select
+        เพราะ option ถูก render ด้วย @for ในเทมเพลตเดียวกัน การตั้ง value
+        ที่ตัว select จึงขึ้นกับลำดับการสร้าง DOM และไม่อัปเดตตามเมื่อค่าเปลี่ยนจากภายนอก
+      -->
+      <select id="page-size"
+              class="field-base w-auto py-1"
+              [disabled]="loading()"
+              (change)="changePageSize($any($event.target).value)">
+        @for (size of pageSizeOptions(); track size) {
+          <option [value]="size" [selected]="size === pageSize()">{{ size }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="flex items-center gap-3 text-sm">
+      <span class="text-(--muted)" aria-live="polite">{{ rangeLabel() }}</span>
+
+      <div class="flex gap-1">
+        <button type="button"
+                class="btn-base btn-sm btn-outline"
+                [disabled]="!canPrev()"
+                (click)="goTo(page() - 1)">
+          ก่อนหน้า
+        </button>
+        <button type="button"
+                class="btn-base btn-sm btn-outline"
+                [disabled]="!canNext()"
+                (click)="goTo(page() + 1)">
+          ถัดไป
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,132 @@
+<section class="grid gap-5">
+  <header>
+    <h1 class="m-0 mb-1 text-2xl font-bold">ลงเวลาเข้าออกงาน</h1>
+    <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+      ดูรายการลงเวลาจากแอป MyMOPH และออกรายงานรายวันหรือรายเดือน
+    </p>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  <!-- ─────────── ออกรายงาน ─────────── -->
+  <div *hasPermission="'attendance.export'"
+       class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div>
+      <h2 class="m-0 text-lg font-semibold">ออกรายงาน</h2>
+      <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+        รายงานใช้ช่วงวันที่ในกล่องนี้ ไม่ขึ้นกับตัวกรองของตารางรายการ
+        @if (appliedSearch()) {
+          แต่จะใช้คำค้น <strong class="text-(--text)">{{ appliedSearch() }}</strong> ที่กรองไว้ด้วย
+        }
+      </p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid content-start gap-2 rounded-lg border border-(--line) p-4">
+        <label for="daily-date" class="text-sm font-medium">รายงานรายวัน</label>
+        <input id="daily-date" type="date" class="field-base w-auto"
+               [value]="dailyDate()" (change)="dailyDate.set($any($event.target).value)" />
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn-base btn-sm btn-primary"
+                  [disabled]="!!exporting()" (click)="exportExcel('daily')">
+            {{ isExporting('daily', 'xlsx') ? 'กำลังสร้าง...' : 'Excel' }}
+          </button>
+          <button type="button" class="btn-base btn-sm btn-outline"
+                  [disabled]="!!exporting()" (click)="exportPdf('daily')">
+            {{ isExporting('daily', 'pdf') ? 'กำลังสร้าง...' : 'PDF' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="grid content-start gap-2 rounded-lg border border-(--line) p-4">
+        <label for="monthly-month" class="text-sm font-medium">รายงานรายเดือน</label>
+        <input id="monthly-month" type="month" class="field-base w-auto"
+               [value]="monthlyMonth()" (change)="monthlyMonth.set($any($event.target).value)" />
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn-base btn-sm btn-primary"
+                  [disabled]="!!exporting()" (click)="exportExcel('monthly')">
+            {{ isExporting('monthly', 'xlsx') ? 'กำลังสร้าง...' : 'Excel' }}
+          </button>
+          <button type="button" class="btn-base btn-sm btn-outline"
+                  [disabled]="!!exporting()" (click)="exportPdf('monthly')">
+            {{ isExporting('monthly', 'pdf') ? 'กำลังสร้าง...' : 'PDF' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────── ตัวกรอง ─────────── -->
+  <div class="grid gap-3 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="grid gap-1">
+        <label for="date-from" class="text-sm font-medium">ตั้งแต่วันที่</label>
+        <input id="date-from" type="date" class="field-base w-auto"
+               [value]="from()" (change)="from.set($any($event.target).value); onRangeChange()" />
+      </div>
+
+      <div class="grid gap-1">
+        <label for="date-to" class="text-sm font-medium">ถึงวันที่</label>
+        <input id="date-to" type="date" class="field-base w-auto"
+               [value]="to()" (change)="to.set($any($event.target).value); onRangeChange()" />
+      </div>
+
+      <div class="flex flex-wrap gap-1">
+        <button type="button" class="btn-base btn-sm btn-outline" (click)="setQuickRange('today')">วันนี้</button>
+        <button type="button" class="btn-base btn-sm btn-outline" (click)="setQuickRange('week')">7 วันล่าสุด</button>
+        <button type="button" class="btn-base btn-sm btn-outline" (click)="setQuickRange('month')">เดือนนี้</button>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="w-full sm:w-96">
+        <label for="attendance-search" class="sr-only">ค้นหาผู้ลงเวลา</label>
+        <input id="attendance-search"
+               type="search"
+               autocomplete="off"
+               class="field-base"
+               placeholder="ค้นด้วยเลขบัตรประชาชน ชื่อ หรือนามสกุล"
+               [value]="searchText()"
+               (input)="searchText.set($any($event.target).value)"
+               (keyup.enter)="onSearch()" />
+      </div>
+      <button type="button" class="btn-base btn-primary" (click)="onSearch()">ค้นหา</button>
+      @if (appliedSearch()) {
+        <button type="button" class="btn-base btn-ghost text-(--muted)" (click)="onClearSearch()">ล้าง</button>
+      }
+    </div>
+  </div>
+
+  <!-- ─────────── สรุป ─────────── -->
+  @if (summary(); as s) {
+    <dl class="m-0 grid gap-3 sm:grid-cols-3">
+      <div class="grid gap-1 rounded-xl border border-(--line) bg-(--surface) px-5 py-4">
+        <dt class="m-0 text-sm text-(--muted)">รายการทั้งหมด</dt>
+        <dd class="m-0 text-2xl font-bold tabular-nums">{{ s.total_records || 0 }}</dd>
+      </div>
+      <div class="grid gap-1 rounded-xl border border-(--line) bg-(--surface) px-5 py-4">
+        <dt class="m-0 text-sm text-(--muted)">ลงเวลาเข้างาน</dt>
+        <dd class="m-0 text-2xl font-bold tabular-nums text-brand-800">{{ s.checked_in_count || 0 }}</dd>
+      </div>
+      <div class="grid gap-1 rounded-xl border border-(--line) bg-(--surface) px-5 py-4">
+        <dt class="m-0 text-sm text-(--muted)">ลงเวลาออกงาน</dt>
+        <dd class="m-0 text-2xl font-bold tabular-nums">{{ s.checked_out_count || 0 }}</dd>
+      </div>
+    </dl>
+  }
+
+  <app-table
+    [columns]="columns()"
+    [rows]="rows()"
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [loading]="loading()"
+    emptyMessage="ไม่พบรายการลงเวลาในช่วงวันที่ที่เลือก"
+    (pageChange)="onPageChange($event)" />
+
+</section>

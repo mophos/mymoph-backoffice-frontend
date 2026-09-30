@@ -1,0 +1,50 @@
+<div class="max-h-[85vh] overflow-y-auto rounded-xl bg-(--surface) shadow-2xl"
+     role="dialog" aria-modal="true" aria-labelledby="delete-reason-title">
+
+  <div class="border-b border-(--line) px-5 py-4">
+    <h2 id="delete-reason-title" class="m-0 text-lg font-semibold text-(--danger)">
+      ยืนยันการลบบัญชีผู้ใช้แอป
+    </h2>
+    <p class="m-0 mt-1 text-sm text-(--muted)">
+      {{ data.displayName }} · <span class="font-mono">{{ data.cidMasked }}</span>
+      @if (data.email) { · {{ data.email }} }
+    </p>
+  </div>
+
+  <div class="grid gap-5 px-5 py-5">
+    <ul class="m-0 grid list-disc gap-1 pl-5 leading-relaxed">
+      <li>คัดลอกข้อมูลบัญชีนี้ไปเก็บใน collection ประวัติการลบ</li>
+      <li>ลบบัญชีออกจากฐานผู้ใช้แอป MyMOPH</li>
+      <li>ผู้ใช้จะเข้าแอปด้วยบัญชีนี้ไม่ได้อีก</li>
+    </ul>
+
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)">
+      การลบมีผลทันทีและกู้คืนจากหน้านี้ไม่ได้ ต้องให้ผู้ดูแลฐานข้อมูลกู้จากประวัติการลบเท่านั้น
+    </p>
+
+    <div class="grid gap-2">
+      <label for="delete-reason" class="text-sm font-medium">
+        เหตุผลในการลบ <span class="text-(--danger)">*</span>
+      </label>
+      <textarea id="delete-reason"
+                rows="3"
+                maxlength="500"
+                class="field-base resize-y"
+                placeholder="เช่น ผู้ใช้แจ้งขอปิดบัญชีทางโทรศัพท์ เมื่อ ..."
+                [value]="reason()"
+                (input)="reason.set($any($event.target).value)"></textarea>
+      <p class="m-0 text-sm" [class.text-(--danger)]="showTooShort()" [class.text-(--muted)]="!showTooShort()">
+        {{ showTooShort() ? 'ต้องมีอย่างน้อย 5 ตัวอักษร' : 'บันทึกไว้ในประวัติการลบพร้อมชื่อผู้ลบ อย่างน้อย 5 ตัวอักษร' }}
+        ({{ trimmed().length }}/500)
+      </p>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-(--line) px-5 py-4">
+    <button type="button" class="btn-base btn-ghost" (click)="cancel()">ยกเลิก</button>
+    <button type="button"
+            class="btn-base btn-danger-solid"
+            [disabled]="!valid()"
+            (click)="submit()">ลบบัญชี</button>
+  </div>
+</div>

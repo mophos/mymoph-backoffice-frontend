@@ -14,13 +14,18 @@ export type PermissionCode =
   | 'user_admin.manage'
   | 'role_admin.manage';
 
+export type MenuGroup = 'operations' | 'finance' | 'administration';
+
 export interface MenuItem {
   id: string;
   label: string;
+  group: MenuGroup;
   icon: string;
   path: string;
   module: string;
   requiredPermissions: PermissionCode[];
+  /** บทบาทที่บังคับเพิ่มจาก permission สำหรับเมนูที่ backend ตรวจอีกชั้น */
+  requiredRoles?: string[];
 }
 
 export interface CurrentUser {

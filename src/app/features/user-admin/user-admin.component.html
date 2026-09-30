@@ -1,0 +1,71 @@
+<section class="grid gap-5">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="m-0 mb-1 text-2xl font-bold">ผู้ใช้และสิทธิ์</h1>
+      <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+        กำหนดว่าใครใช้ระบบหลังบ้านได้ ในบทบาทใด และดูแลหน่วยงานไหน
+      </p>
+    </div>
+
+    <button *hasPermission="'user_admin.manage'"
+            type="button"
+            class="btn-base btn-primary"
+            (click)="openCreate()">
+      เพิ่มผู้ใช้
+    </button>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative w-full sm:w-96">
+      <label for="search" class="sr-only">ค้นหา</label>
+      <input id="search"
+             type="search"
+             autocomplete="off"
+             class="field-base"
+             placeholder="ค้นด้วยเลขบัตรประชาชน ชื่อ หรืออีเมล"
+             [value]="searchText()"
+             (input)="onSearchInput($any($event.target).value)"
+             (keyup.enter)="onSearch()" />
+    </div>
+
+    <button type="button"
+            class="btn-base btn-primary"
+            (click)="onSearch()">ค้นหา</button>
+
+    @if (searchText()) {
+      <button type="button"
+              class="btn-base btn-ghost text-(--muted)"
+              (click)="onClearSearch()">ล้าง</button>
+    }
+  </div>
+
+  <app-table
+    [columns]="columns"
+    [rows]="rows()"
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [loading]="loading()"
+    [errorMessage]="errorMessage()"
+    emptyMessage="ยังไม่มีผู้ใช้ระบบหลังบ้านในหน่วยงานที่คุณดูแล"
+    (pageChange)="onPageChange($event)">
+
+    <ng-template #rowActions let-row>
+      <div class="flex justify-end gap-1">
+        <button type="button"
+                class="btn-base btn-sm btn-ghost"
+                (click)="openEdit(row)">แก้ไข</button>
+
+        @if (canDeactivate()) {
+          <button type="button"
+                  class="btn-base btn-sm btn-danger"
+                  (click)="confirmDeactivate(row)">ปิดการใช้งาน</button>
+        } @else {
+          <button type="button" disabled
+                  class="btn-base btn-sm btn-ghost"
+                  title="ต้องมีขอบเขตทุกหน่วยงาน หรือสิทธิ์ role_admin.manage">ปิดการใช้งาน</button>
+        }
+      </div>
+    </ng-template>
+  </app-table>
+</section>

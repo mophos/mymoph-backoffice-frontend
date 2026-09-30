@@ -1,77 +1,129 @@
 @if (user(); as currentUser) {
-  <mat-sidenav-container class="h-dvh">
-    <mat-sidenav
-      class="w-72 border-e border-(--line)"
-      [mode]="isHandset() ? 'over' : 'side'"
-      [opened]="isHandset() ? drawerOpen() : true">
+  <div class="flex h-dvh">
 
-      <div class="flex items-center gap-3 px-4 py-5">
-        <div class="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-700 font-bold text-white">
+    <!-- เนื้อหาของ drawer ใช้ร่วมกันทั้งสองโหมด ต่างกันแค่กล่องที่ครอบ -->
+    <ng-template #drawerContent>
+      <!-- h-16 ต้องเท่ากับความสูงของแถบบน เส้นคั่นจึงอยู่ระดับเดียวกัน -->
+      <div class="flex h-16 shrink-0 items-center gap-3 border-b border-(--line) px-4">
+        <div class="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-700 text-sm font-bold text-white">
           MY
         </div>
         <div class="min-w-0">
-          <p class="m-0 truncate font-semibold">MyMOPH Back Office</p>
-          <p class="m-0 truncate text-sm text-(--muted)">
+          <p class="m-0 truncate text-sm font-semibold leading-tight">MyMOPH Back Office</p>
+          <p class="m-0 truncate text-xs leading-tight text-(--muted)">
             {{ currentUser.displayName || currentUser.cid }}
           </p>
         </div>
       </div>
 
-      <mat-divider />
-
-      <mat-nav-list>
-        @for (menu of currentUser.menus; track menu.id) {
-          <a mat-list-item
-             [routerLink]="menu.path"
-             routerLinkActive
-             #link="routerLinkActive"
-             [activated]="link.isActive"
-             (click)="onNavigate()">
-            <mat-icon matListItemIcon aria-hidden="true">{{ menu.icon }}</mat-icon>
-            <span matListItemTitle>{{ menu.label }}</span>
-          </a>
+      <nav class="grid flex-1 content-start gap-4 overflow-y-auto py-4" aria-label="เมนูหลัก">
+        @for (group of menuGroups(); track group.label) {
+          <div class="grid gap-1">
+            <p class="m-0 px-4 text-xs font-semibold tracking-wide text-(--muted) uppercase">
+              {{ group.label }}
+            </p>
+            <ul class="m-0 grid list-none gap-0.5 p-0">
+              @for (menu of group.items; track menu.id) {
+                <li>
+                  <a [routerLink]="menu.path"
+                     routerLinkActive="bg-brand-50 font-semibold text-brand-800"
+                     class="mx-2 flex items-center gap-3 rounded-lg px-3 py-2 no-underline text-(--text) hover:bg-(--surface-2) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand-700"
+                     (click)="onNavigate()">
+                    <span class="material-icons shrink-0 !text-xl" aria-hidden="true">{{ menu.icon }}</span>
+                    <span class="min-w-0 truncate">{{ menu.label }}</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          </div>
         } @empty {
-          <p class="px-4 py-3 text-sm text-(--muted)">
+          <p class="m-0 px-4 py-3 text-sm leading-relaxed text-(--muted)">
             บัญชีนี้ยังไม่ได้รับสิทธิ์เข้าเมนูใด
           </p>
         }
-      </mat-nav-list>
-    </mat-sidenav>
+      </nav>
+    </ng-template>
 
-    <mat-sidenav-content class="bg-transparent">
-      <mat-toolbar class="sticky top-0 z-10 gap-2 border-b border-(--line) bg-(--surface)">
+    <!-- จอกว้าง: อยู่ถาวรข้างเนื้อหา -->
+    @if (!isHandset()) {
+      <aside class="flex w-72 shrink-0 flex-col border-e border-(--line) bg-(--surface)">
+        <ng-container [ngTemplateOutlet]="drawerContent" />
+      </aside>
+    }
+
+    <!-- จอแคบ: ทับเนื้อหา มีฉากหลังและกัก focus ไว้ข้างใน -->
+    @if (overlayDrawer()) {
+      <div class="fixed inset-0 z-30 bg-black/40"
+           (click)="closeDrawer()"
+           aria-hidden="true"></div>
+
+      <aside class="fixed inset-y-0 start-0 z-40 flex w-72 flex-col border-e border-(--line) bg-(--surface) shadow-2xl"
+             role="dialog"
+             aria-modal="true"
+             aria-label="เมนูหลัก"
+             cdkTrapFocus
+             [cdkTrapFocusAutoCapture]="true"
+             (keydown.escape)="closeDrawer()">
+        <ng-container [ngTemplateOutlet]="drawerContent" />
+      </aside>
+    }
+
+    <div class="flex min-w-0 flex-1 flex-col overflow-y-auto">
+      <header class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-(--line) bg-(--surface) px-4">
         @if (isHandset()) {
-          <button matIconButton (click)="toggleDrawer()" aria-label="เปิดปิดเมนู">
-            <mat-icon>menu</mat-icon>
+          <button type="button"
+                  class="btn-base btn-ghost !px-2"
+                  aria-label="เปิดปิดเมนู"
+                  [attr.aria-expanded]="drawerOpen()"
+                  (click)="toggleDrawer()">
+            <span class="material-icons" aria-hidden="true">menu</span>
           </button>
         }
 
         <span class="grow"></span>
 
-        <button matButton [matMenuTriggerFor]="accountMenu" class="gap-2">
-          <mat-icon>account_circle</mat-icon>
+        <button type="button"
+                class="btn-base btn-ghost gap-2"
+                cdkOverlayOrigin
+                #accountOrigin="cdkOverlayOrigin"
+                [attr.aria-expanded]="accountOpen()"
+                aria-haspopup="menu"
+                (click)="accountOpen.set(!accountOpen())">
+          <span class="material-icons" aria-hidden="true">account_circle</span>
           <span class="hidden sm:inline">{{ currentUser.displayName || currentUser.cid }}</span>
         </button>
 
-        <mat-menu #accountMenu="matMenu">
-          <div class="px-4 py-3">
-            <p class="m-0 font-semibold">{{ currentUser.displayName || currentUser.cid }}</p>
-            <p class="m-0 mt-1 text-sm text-(--muted)">
-              บทบาท: {{ currentUser.roles.join(', ') || 'ไม่มีบทบาท' }}
-            </p>
-            <p class="m-0 text-sm text-(--muted)">ขอบเขต: {{ scopeLabel() }}</p>
+        <ng-template cdkConnectedOverlay
+                     [cdkConnectedOverlayOrigin]="accountOrigin"
+                     [cdkConnectedOverlayOpen]="accountOpen()"
+                     (overlayOutsideClick)="accountOpen.set(false)"
+                     (detach)="accountOpen.set(false)">
+          <div class="mt-1 w-72 overflow-hidden rounded-xl border border-(--line) bg-(--surface) shadow-2xl"
+               role="menu"
+               cdkTrapFocus
+               [cdkTrapFocusAutoCapture]="true"
+               (keydown.escape)="accountOpen.set(false)">
+            <div class="border-b border-(--line) px-4 py-3">
+              <p class="m-0 font-semibold">{{ currentUser.displayName || currentUser.cid }}</p>
+              <p class="m-0 mt-1 text-sm leading-relaxed text-(--muted)">
+                บทบาท: {{ currentUser.roles.join(', ') || 'ไม่มีบทบาท' }}
+              </p>
+              <p class="m-0 text-sm leading-relaxed text-(--muted)">ขอบเขต: {{ scopeLabel() }}</p>
+            </div>
+            <button type="button"
+                    role="menuitem"
+                    class="flex w-full items-center gap-3 border-0 bg-transparent px-4 py-3 text-start text-(--danger) hover:bg-(--surface-2) focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-700"
+                    (click)="logout()">
+              <span class="material-icons" aria-hidden="true">logout</span>
+              <span>ออกจากระบบ</span>
+            </button>
           </div>
-          <mat-divider />
-          <button mat-menu-item (click)="logout()">
-            <mat-icon>logout</mat-icon>
-            <span>ออกจากระบบ</span>
-          </button>
-        </mat-menu>
-      </mat-toolbar>
+        </ng-template>
+      </header>
 
-      <main class="mx-auto max-w-[110rem] p-4 md:p-6">
+      <main class="mx-auto w-full max-w-[110rem] p-4 md:p-6">
         <router-outlet />
       </main>
-    </mat-sidenav-content>
-  </mat-sidenav-container>
+    </div>
+  </div>
 }

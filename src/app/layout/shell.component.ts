@@ -1,26 +1,34 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { A11yModule } from '@angular/cdk/a11y';
+import { OverlayModule } from '@angular/cdk/overlay';
 import { map } from 'rxjs/operators';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatListModule } from '@angular/material/list';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../core/auth/auth.service';
+import { MenuGroup, MenuItem } from '../core/models/auth.models';
 
+/** ป้ายกลุ่มเรียงตามลำดับที่ต้องการให้แสดง */
+const GROUP_LABELS: { key: MenuGroup; label: string }[] = [
+  { key: 'operations', label: 'งานประจำวัน' },
+  { key: 'finance', label: 'การเงิน' },
+  { key: 'administration', label: 'ผู้ดูแลระบบ' }
+];
+
+/**
+ * กรอบหน้าจอ เขียนด้วย CDK + Tailwind ไม่ใช้ Angular Material แล้ว
+ *
+ * CDK ให้เฉพาะพฤติกรรมที่เขียนเองแล้วมักพลาด คือ focus trap ของ drawer
+ * ตอนทับเนื้อหา และการจัดตำแหน่ง overlay ของเมนูบัญชี ส่วนหน้าตาเป็น Tailwind ล้วน
+ *
+ * ไอคอนใช้ฟอนต์ Material Icons ที่โหลดจาก angular.json ผ่าน class .material-icons
+ * ใน styles.scss ไม่ได้พึ่ง <mat-icon> จึงไม่ต้องมี @angular/material
+ */
 @Component({
   selector: 'app-shell',
-  imports: [
-    RouterOutlet, RouterLink, RouterLinkActive,
-    MatSidenavModule, MatToolbarModule, MatListModule,
-    MatIconModule, MatButtonModule, MatMenuModule, MatDividerModule
-  ],
+  imports: [NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, A11yModule, OverlayModule],
   templateUrl: './shell.component.html',
-  styleUrl: './shell.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShellComponent {
@@ -39,16 +47,36 @@ export class ShellComponent {
     { initialValue: false }
   );
 
-  readonly drawerOpen = signal(true);
+  readonly drawerOpen = signal(false);
+  readonly accountOpen = signal(false);
+
+  /** drawer ทับเนื้อหาอยู่จริงเมื่อจอแคบและถูกเปิด */
+  readonly overlayDrawer = computed(() => this.isHandset() && this.drawerOpen());
+
+  /**
+   * จัดเมนูเป็นกลุ่มตามลำดับใน GROUP_LABELS
+   * ข้ามกลุ่มที่ผู้ใช้ไม่มีเมนูเลย เพื่อไม่ให้เห็นหัวข้อว่าง
+   */
+  readonly menuGroups = computed(() => {
+    const menus = this.user()?.menus ?? [];
+    return GROUP_LABELS
+      .map(({ key, label }) => ({
+        label,
+        items: menus.filter((item: MenuItem) => item.group === key)
+      }))
+      .filter((group) => group.items.length > 0);
+  });
 
   toggleDrawer(): void {
     this.drawerOpen.update((open) => !open);
   }
 
+  closeDrawer(): void {
+    this.drawerOpen.set(false);
+  }
+
   onNavigate(): void {
-    if (this.isHandset()) {
-      this.drawerOpen.set(false);
-    }
+    if (this.isHandset()) this.closeDrawer();
   }
 
   scopeLabel(): string {
@@ -61,6 +89,7 @@ export class ShellComponent {
   }
 
   logout(): void {
+    this.accountOpen.set(false);
     this.authService.logout();
   }
 }

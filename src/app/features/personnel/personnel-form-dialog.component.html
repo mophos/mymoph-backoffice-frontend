@@ -1,0 +1,59 @@
+<div class="max-h-[85vh] overflow-y-auto rounded-xl bg-(--surface) shadow-2xl"
+     role="dialog" aria-modal="true" aria-labelledby="personnel-form-title">
+
+  <div class="sticky top-0 z-10 border-b border-(--line) bg-(--surface) px-5 py-4">
+    <h2 id="personnel-form-title" class="m-0 text-lg font-semibold">
+      {{ isEdit() ? 'แก้ไขข้อมูลบุคลากร' : 'เพิ่มข้อมูลบุคลากร' }}
+    </h2>
+  </div>
+
+  <div class="grid gap-5 px-5 py-5">
+    <div class="grid gap-2">
+      <label for="personnel-cid" class="text-sm font-medium">เลขบัตรประชาชน</label>
+      <input id="personnel-cid"
+             type="text"
+             inputmode="numeric"
+             maxlength="13"
+             autocomplete="off"
+             class="field-base max-w-64 font-mono tabular-nums"
+             placeholder="13 หลัก"
+             [value]="cid()"
+             (input)="cid.set($any($event.target).value)" />
+      @if (showCidHint()) {
+        <p class="m-0 text-sm text-(--danger)">ต้องเป็นตัวเลข 13 หลัก</p>
+      }
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="grid gap-2">
+        <label for="personnel-first" class="text-sm font-medium">ชื่อ</label>
+        <input id="personnel-first" type="text" autocomplete="off" class="field-base"
+               [value]="firstName()" (input)="firstName.set($any($event.target).value)" />
+      </div>
+      <div class="grid gap-2">
+        <label for="personnel-last" class="text-sm font-medium">นามสกุล</label>
+        <input id="personnel-last" type="text" autocomplete="off" class="field-base"
+               [value]="lastName()" (input)="lastName.set($any($event.target).value)" />
+      </div>
+    </div>
+
+    @if (locked()) {
+      <div class="grid gap-1">
+        <span class="text-sm font-medium">หน่วยงาน</span>
+        <p class="m-0 font-mono">{{ hospcodes()[0] }}</p>
+        <p class="m-0 text-sm text-(--muted)">คุณดูแลหน่วยงานเดียว ระบบกำหนดให้อัตโนมัติ</p>
+      </div>
+    } @else {
+      <app-office-combobox label="หน่วยงาน (เลือกได้หนึ่งแห่ง)"
+                           [selected]="hospcodes()"
+                           (selectedChange)="onOfficeChange($event)" />
+    }
+  </div>
+
+  <div class="sticky bottom-0 flex justify-end gap-2 border-t border-(--line) bg-(--surface) px-5 py-4">
+    <button type="button" class="btn-base btn-ghost" (click)="cancel()">ยกเลิก</button>
+    <button type="button" class="btn-base btn-primary" [disabled]="!valid()" (click)="submit()">
+      {{ isEdit() ? 'บันทึก' : 'เพิ่ม' }}
+    </button>
+  </div>
+</div>

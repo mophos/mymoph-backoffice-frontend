@@ -1,0 +1,80 @@
+<div class="max-h-[85vh] overflow-y-auto rounded-xl bg-(--surface) shadow-2xl"
+     role="dialog" aria-modal="true" aria-labelledby="user-form-title">
+
+  <div class="sticky top-0 z-10 border-b border-(--line) bg-(--surface) px-5 py-4">
+    <h2 id="user-form-title" class="m-0 text-lg font-semibold">
+      {{ isEdit() ? 'แก้ไขบทบาทและหน่วยงาน' : 'เพิ่มผู้ใช้ระบบหลังบ้าน' }}
+    </h2>
+    @if (isEdit()) {
+      <p class="m-0 mt-1 text-sm text-(--muted)">{{ data.editing?.displayName }}</p>
+    }
+  </div>
+
+  <div class="grid gap-6 px-5 py-5">
+    <div class="grid gap-2">
+      <label for="cid-input" class="text-sm font-medium">เลขบัตรประชาชน</label>
+      <input id="cid-input"
+             type="text"
+             inputmode="numeric"
+             maxlength="13"
+             autocomplete="off"
+             class="field-base max-w-64"
+             [value]="cid()"
+             [readOnly]="isEdit()"
+             (input)="cid.set($any($event.target).value)"
+             placeholder="13 หลัก" />
+      <p class="m-0 text-sm text-(--muted)">
+        {{ isEdit() ? 'แก้เลขบัตรที่นี่ไม่ได้ ถ้าเลขผิดต้องปิดการใช้งานแล้วเพิ่มใหม่' : 'ถ้ายังไม่มีบัญชีในระบบ จะถูกสร้างให้อัตโนมัติ' }}
+      </p>
+    </div>
+
+    <app-office-combobox [selected]="hospcodes()" (selectedChange)="hospcodes.set($event)" />
+
+    <fieldset class="m-0 grid gap-2 border-0 p-0">
+      <legend class="mb-1 p-0 text-sm font-medium">บทบาท</legend>
+      <p class="m-0 mb-1 text-sm leading-relaxed text-(--danger)">
+        การบันทึกจะ<strong>แทนที่ชุดบทบาททั้งหมด</strong> บทบาทที่ไม่ได้ติ๊กจะถูกถอดออก
+      </p>
+
+      <div class="grid gap-2 sm:grid-cols-2">
+        @for (option of roleOptions; track option.code) {
+          <label class="flex items-start gap-3 rounded-lg border p-3"
+                 [class.border-brand-700]="isSelected(option.code)"
+                 [class.bg-brand-50]="isSelected(option.code)"
+                 [class.border-(--line)]="!isSelected(option.code)"
+                 [class.opacity-60]="isDisabled(option)"
+                 [class.cursor-pointer]="!isDisabled(option)">
+            <input type="checkbox"
+                   class="mt-1 size-4 shrink-0 accent-brand-700"
+                   [checked]="isSelected(option.code)"
+                   [disabled]="isDisabled(option)"
+                   (change)="toggle(option)" />
+            <span class="min-w-0">
+              <span class="block font-medium">{{ option.label }}</span>
+              <span class="block text-sm leading-snug text-(--muted)">{{ option.description }}</span>
+              @if (isDisabled(option)) {
+                <span class="mt-1 block text-sm text-(--danger)">ต้องมีสิทธิ์ role_admin.manage</span>
+              }
+            </span>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    @if (removedRoles().length) {
+      <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)">
+        บันทึกแล้วจะถอดบทบาทนี้ออก: <strong>{{ removedLabel() }}</strong>
+      </p>
+    }
+  </div>
+
+  <div class="sticky bottom-0 flex justify-end gap-2 border-t border-(--line) bg-(--surface) px-5 py-4">
+    <button type="button"
+            class="btn-base btn-ghost"
+            (click)="cancel()">ยกเลิก</button>
+    <button type="button"
+            class="btn-base btn-primary"
+            [disabled]="!valid()"
+            (click)="submit()">{{ isEdit() ? 'บันทึก' : 'เพิ่มผู้ใช้' }}</button>
+  </div>
+</div>

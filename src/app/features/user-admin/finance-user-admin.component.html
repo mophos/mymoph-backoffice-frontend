@@ -1,98 +1,45 @@
 <section class="grid gap-5">
-  <header>
-    <h1 class="m-0 mb-1 text-2xl font-bold">ผู้ใช้และสิทธิ์: การเงิน</h1>
-    <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
-      แต่งตั้งเจ้าหน้าที่การเงินประจำหน่วยงาน หน้านี้มอบได้เฉพาะบทบาท
-      <code class="rounded bg-(--surface-2) px-1.5 py-0.5">admin_affairs</code>
-      ซึ่งเป็นสิทธิ์เข้าเมนู Payroll และใบรับรองภาษี
-    </p>
-  </header>
-
-  <div class="flex flex-wrap items-start gap-3">
-    <mat-form-field appearance="outline" class="grow basis-88">
-      <mat-label>ค้นหา</mat-label>
-      <input matInput
-             [ngModel]="searchText()"
-             (ngModelChange)="searchText.set($event)"
-             (keyup.enter)="onSearch()"
-             placeholder="เลขบัตรประชาชน ชื่อ หรืออีเมล" />
-      <mat-icon matSuffix aria-hidden="true">search</mat-icon>
-    </mat-form-field>
-
-    <button matButton="filled" (click)="onSearch()">ค้นหา</button>
-    <button matButton (click)="onClearSearch()">ล้าง</button>
-  </div>
-
-  <form *hasPermission="'finance_admin.manage'"
-        (ngSubmit)="save()"
-        class="rounded-xl border border-(--line) bg-(--surface) p-5">
-    <h2 class="m-0 mb-4 text-lg font-semibold">
-      {{ editing() ? 'แก้ไขหน่วยงานที่รับผิดชอบ' : 'แต่งตั้งเจ้าหน้าที่การเงิน' }}
-    </h2>
-
-    @if (editing(); as target) {
-      <div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg bg-(--surface-2) px-3 py-2">
-        <mat-icon aria-hidden="true">edit</mat-icon>
-        <span>กำลังแก้ไข <strong>{{ fullName(target) }}</strong></span>
-        <button matButton type="button" (click)="cancelEdit()">ยกเลิก</button>
-      </div>
-    }
-
-    <div class="grid items-start gap-3 md:grid-cols-[minmax(12rem,18rem)_minmax(14rem,24rem)_auto]">
-      <mat-form-field appearance="outline">
-        <mat-label>เลขบัตรประชาชน</mat-label>
-        <input matInput
-               inputmode="numeric"
-               maxlength="13"
-               name="cid"
-               [ngModel]="formCid()"
-               (ngModelChange)="formCid.set($event)"
-               [readonly]="!!editing()"
-               placeholder="13 หลัก" />
-        @if (editing()) {
-          <mat-hint>แก้เลขบัตรที่นี่ไม่ได้ ถ้าเลขผิดต้องถอนสิทธิ์แล้วแต่งตั้งใหม่</mat-hint>
-        }
-      </mat-form-field>
-
-      @if (isGlobalScope()) {
-        <mat-form-field appearance="outline">
-          <mat-label>รหัสหน่วยงาน</mat-label>
-          <input matInput
-                 name="hospcodesText"
-                 [ngModel]="formHospcodes().join(', ')"
-                 (ngModelChange)="onHospcodesText($event)"
-                 placeholder="คั่นด้วยจุลภาค" />
-          <mat-hint>บัญชีของคุณมีขอบเขตทุกหน่วยงาน จึงต้องระบุรหัสเอง</mat-hint>
-        </mat-form-field>
-      } @else {
-        <mat-form-field appearance="outline">
-          <mat-label>หน่วยงานที่รับผิดชอบ</mat-label>
-          <mat-select multiple
-                      name="hospcodes"
-                      [ngModel]="formHospcodes()"
-                      (ngModelChange)="formHospcodes.set($event)">
-            @for (code of hospcodeOptions(); track code) {
-              <mat-option [value]="code">{{ code }}</mat-option>
-            }
-          </mat-select>
-          <mat-hint>เลือกได้เฉพาะหน่วยงานที่คุณดูแล</mat-hint>
-        </mat-form-field>
-      }
-
-      <button matButton="filled" type="submit" [disabled]="!canSubmit() || loading()">
-        {{ editing() ? 'บันทึกการแก้ไข' : 'แต่งตั้ง' }}
-      </button>
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="m-0 mb-1 text-2xl font-bold">ผู้ใช้และสิทธิ์: การเงิน</h1>
+      <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+        แต่งตั้งผู้ดูแลการเงินของหน่วยงาน ให้ออกใบรับรองภาษีและดูเงินเดือนของหน่วยงานที่รับผิดชอบได้
+      </p>
     </div>
 
-    @if (!canSubmit() && formCid()) {
-      <p class="mt-3 mb-0 leading-relaxed text-(--danger)">
-        ต้องกรอกเลขบัตรครบ 13 หลักและเลือกหน่วยงานอย่างน้อยหนึ่งแห่ง
-        การบันทึกโดยไม่มีหน่วยงานจะเป็นการถอนขอบเขตทั้งหมดของบัญชีนั้น
-      </p>
-    }
-  </form>
+    <button *hasPermission="'finance_admin.manage'"
+            type="button"
+            class="btn-base btn-primary"
+            (click)="openCreate()">
+      แต่งตั้งผู้ดูแลการเงิน
+    </button>
+  </header>
 
-  <app-data-table
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="relative w-full sm:w-96">
+      <label for="finance-search" class="sr-only">ค้นหา</label>
+      <input id="finance-search"
+             type="search"
+             autocomplete="off"
+             class="field-base"
+             placeholder="ค้นด้วยเลขบัตรประชาชน ชื่อ หรืออีเมล"
+             [value]="searchText()"
+             (input)="onSearchInput($any($event.target).value)"
+             (keyup.enter)="onSearch()" />
+    </div>
+
+    <button type="button"
+            class="btn-base btn-primary"
+            (click)="onSearch()">ค้นหา</button>
+
+    @if (searchText()) {
+      <button type="button"
+              class="btn-base btn-ghost text-(--muted)"
+              (click)="onClearSearch()">ล้าง</button>
+    }
+  </div>
+
+  <app-table
     [columns]="columns"
     [rows]="rows()"
     [total]="total()"
@@ -100,14 +47,18 @@
     [pageSize]="pageSize()"
     [loading]="loading()"
     [errorMessage]="errorMessage()"
-    emptyMessage="ยังไม่มีเจ้าหน้าที่การเงินในหน่วยงานที่คุณดูแล"
+    emptyMessage="ยังไม่มีผู้ดูแลการเงินในหน่วยงานที่คุณดูแล"
     (pageChange)="onPageChange($event)">
 
     <ng-template #rowActions let-row>
-      <button matButton type="button" (click)="startEdit(row)">แก้ไข</button>
-      <button matButton type="button" class="text-(--danger)" (click)="confirmDeactivate(row)">
-        ถอนสิทธิ์
-      </button>
+      <div *hasPermission="'finance_admin.manage'" class="flex justify-end gap-1">
+        <button type="button"
+                class="btn-base btn-sm btn-ghost"
+                (click)="openEdit(row)">แก้ไข</button>
+        <button type="button"
+                class="btn-base btn-sm btn-danger"
+                (click)="confirmDeactivate(row)">ถอนสิทธิ์</button>
+      </div>
     </ng-template>
-  </app-data-table>
+  </app-table>
 </section>

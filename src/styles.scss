@@ -1,22 +1,11 @@
-@use '@angular/material' as mat;
-@use './app/core/theme/theme-colors' as brand;
-
-// ธีม Material สร้างจาก --brand: #0f766e ของระบบเดิม
-// วางไว้บนสุดเพื่อให้ CSS ของหน้าที่เขียนมือไว้เดิม (ด้านล่าง) ทับได้ตามลำดับ cascade
+/*
+ * ธีมของระบบเป็น Tailwind กับตัวแปร CSS ด้านล่างทั้งหมด
+ * ไม่ใช้ Angular Material แล้วตั้งแต่ 30 กันยายน 2569
+ * (เดิมมีบล็อก mat.theme() อยู่ตรงนี้ ต้องวางบนสุดเพื่อให้ CSS เดิมทับได้
+ *  ข้อจำกัดนั้นหมดไปพร้อมกับการถอด Material)
+ */
 html {
   color-scheme: light;
-
-  @include mat.theme((
-    color: (
-      primary: brand.$primary-palette,
-      tertiary: brand.$tertiary-palette,
-    ),
-    typography: (
-      plain-family: ('Noto Sans Thai Variable', 'Noto Sans Thai', 'Sarabun', sans-serif),
-      brand-family: ('Noto Sans Thai Variable', 'Noto Sans Thai', 'Sarabun', sans-serif),
-    ),
-    density: 0,
-  ));
 }
 
 :root {
@@ -43,20 +32,32 @@ body {
   color: var(--text);
 }
 
-button {
+/*
+ * form control ไม่สืบทอด font-family จาก body โดยปริยาย เบราว์เซอร์ใช้ฟอนต์ระบบแทน
+ * ปกติ preflight ของ Tailwind จัดการให้ แต่เราปิดไว้เพราะมัน reset ของอย่างอื่นจนหน้าเดิมพัง
+ * จึงหยิบมาเฉพาะกฎนี้ซึ่งเป็นส่วนที่จำเป็นจริง
+ */
+button,
+input,
+select,
+textarea,
+optgroup {
   font: inherit;
+  letter-spacing: inherit;
+}
+
+/* Safari ไม่ใช้ color ที่สืบทอดมากับ placeholder */
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 
 /*
- * @fontsource/material-icons ให้มาเฉพาะ @font-face
- * ต้องประกาศ utility class เองเพื่อให้ <mat-icon> แสดงเป็นรูปแทนตัวอักษร
+ * @fontsource/material-icons (โหลดผ่าน angular.json) ให้มาเฉพาะ @font-face
+ * ต้องประกาศ utility class เองเพื่อให้ <span class="material-icons"> แสดงเป็นรูป
  * (liga คือ ligature ที่แปลงคำว่า search เป็นรูปแว่นขยาย)
- *
- * class .mat-icon ถูกใส่โดย component ของ Material เท่านั้น
- * หน้าเดิมที่วาด SVG เองจึงไม่ได้รับผลกระทบ
  */
-.mat-icon,
 .material-icons {
   font-family: 'Material Icons', sans-serif;
   font-weight: normal;
@@ -72,3 +73,5 @@ button {
   font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
+

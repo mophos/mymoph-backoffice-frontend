@@ -1,0 +1,82 @@
+<section class="grid gap-5">
+  <header>
+    <h1 class="m-0 mb-1 text-2xl font-bold">ผู้ใช้แอป MyMOPH</h1>
+    <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+      ค้นหาบัญชีผู้ใช้แอป ตรวจว่ามีอยู่ในฐานบุคลากรหรือไม่ และลบบัญชีตามคำขอ
+    </p>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="w-full sm:w-96">
+      <label for="mymoph-search" class="sr-only">ค้นหาผู้ใช้แอป</label>
+      <input id="mymoph-search"
+             type="search"
+             autocomplete="off"
+             class="field-base"
+             placeholder="เลขบัตรประชาชน ชื่อ หรืออีเมล (อย่างน้อย 3 ตัวอักษร)"
+             [value]="searchText()"
+             (input)="onSearchInput($any($event.target).value)"
+             (keyup.enter)="onSearch()" />
+    </div>
+
+    <button type="button"
+            class="btn-base btn-primary"
+            [disabled]="!canSearch()"
+            (click)="onSearch()">ค้นหา</button>
+
+    @if (appliedSearch()) {
+      <button type="button"
+              class="btn-base btn-ghost text-(--muted)"
+              (click)="onClearSearch()">ล้าง</button>
+    }
+  </div>
+
+  @if (successMessage()) {
+    <p class="m-0 rounded-lg bg-brand-50 px-4 py-3 leading-relaxed text-brand-800" role="status">
+      {{ successMessage() }}
+    </p>
+  }
+
+  @if (!hasSearched()) {
+    <!-- ฐานผู้ใช้แอปมีสองแสนกว่าบัญชี จึงไม่แสดงรายการทั้งหมด ต้องค้นก่อนเสมอ -->
+    <div class="grid gap-2 rounded-xl border border-dashed border-(--line) bg-(--surface) px-6 py-10 text-center">
+      <p class="m-0 font-medium">ค้นหาก่อนเพื่อดูข้อมูล</p>
+      <p class="m-0 leading-relaxed text-(--muted)">
+        หน้านี้ไม่แสดงรายชื่อทั้งหมดเพราะมีผู้ใช้แอปมากกว่าสองแสนบัญชี<br />
+        พิมพ์เลขบัตรประชาชน ชื่อ หรืออีเมลอย่างน้อย 3 ตัวอักษร
+      </p>
+      @if (errorMessage()) {
+        <p class="m-0 mt-2 text-(--danger)">{{ errorMessage() }}</p>
+      }
+    </div>
+  } @else {
+    <app-table
+      [columns]="columns"
+      [rows]="rows()"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [loading]="loading()"
+      [errorMessage]="errorMessage()"
+      emptyMessage="ไม่พบบัญชีที่ตรงกับคำค้นนี้"
+      (pageChange)="onPageChange($event)">
+
+      <ng-template #rowActions let-row>
+        <div class="flex justify-end gap-1">
+          <button *hasPermission="'mymoph_user.verify_hr'"
+                  type="button"
+                  class="btn-base btn-sm btn-ghost"
+                  [disabled]="isChecking(row)"
+                  (click)="verifyHr(row)">
+            {{ isChecking(row) ? 'กำลังตรวจ...' : 'ตรวจฐานบุคลากร' }}
+          </button>
+
+          <button *hasPermission="'mymoph_user.delete'"
+                  type="button"
+                  class="btn-base btn-sm btn-danger"
+                  (click)="confirmDelete(row)">ลบบัญชี</button>
+        </div>
+      </ng-template>
+    </app-table>
+  }
+</section>

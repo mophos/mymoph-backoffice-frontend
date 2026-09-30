@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { filter } from 'rxjs';
 import { PDFDocument } from 'pdf-lib';
 import {
   BatchUploadPreviewRow,
@@ -11,6 +12,8 @@ import {
   YearlyOverviewRow
 } from './tax.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { AppDialogService } from '../../shared/ui/dialog/dialog.service';
+import { TableComponent, TableColumn } from '../../shared/ui/table/table.component';
 
 interface IndividualUploadRow {
   cid: string;
@@ -32,432 +35,10 @@ type ManageViewMode = 'documents' | 'upload' | 'yearly-overview';
 
 @Component({
     selector: 'app-tax-management',
-    imports: [FormsModule, DatePipe],
-    template: `
-    <section class="card">
-      <h2>ใบรับรองภาษี (Tax)</h2>
-      <p class="note">ใช้สิทธิ์เดียวกับ Payroll | ชื่อไฟล์มาตรฐาน: {{ selectedYearShortPreview }}_เลขบัตร_ลำดับ.pdf</p>
-    
-      @if (canManage) {
-        <div class="year-create">
-          <input type="number" [(ngModel)]="createYearForm.yearBe" placeholder="ปี พ.ศ. เช่น 2568 หรือ 68" />
-          @if (requiresHospcodeInput) {
-            <input
-              [(ngModel)]="createYearForm.hospcode"
-              maxlength="10"
-              placeholder="Hospcode"
-              />
-          }
-          <button (click)="createYear()">เพิ่มปี พ.ศ.</button>
-        </div>
-      }
-    
-      @if (!canManage) {
-        <p class="note">บัญชีนี้เป็นโหมดอ่านอย่างเดียว (ไม่มีสิทธิ์ payroll.export)</p>
-      }
-      @if (errorMessage) {
-        <p class="error">{{ errorMessage }}</p>
-      }
-      @if (errorMessage) {
-        <div class="error-banner">
-          <strong>เกิดข้อผิดพลาด:</strong> {{ errorMessage }}
-        </div>
-      }
-      @if (successMessage) {
-        <p class="success">{{ successMessage }}</p>
-      }
-    
-      <div class="year-filter">
-        <input
-          [(ngModel)]="yearHospcodeSearch"
-          maxlength="10"
-          placeholder="ค้นหา Hospcode ในรายการปี"
-          (keyup.enter)="searchYearByHospcode()"
-          />
-        <button (click)="searchYearByHospcode()">ค้นหา</button>
-        <button class="ghost" (click)="resetYearHospcodeSearch()">ล้าง</button>
-      </div>
-    
-      @if (years.length) {
-        <table class="compact-table">
-          <thead>
-            <tr>
-              <th>ปี พ.ศ.</th>
-              <th>Hospcode</th>
-              <th>จำนวนไฟล์</th>
-              <th>Updated</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (year of pagedYears; track year) {
-              <tr [class.selected]="selectedYearId === year.id">
-                <td>{{ year.yearBe }}</td>
-                <td>{{ year.hospcode }}</td>
-                <td>{{ year.documentCount }}</td>
-                <td>{{ year.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-                <td class="actions">
-                  <button class="ghost" (click)="selectYear(year.id)">เปิด</button>
-                  @if (canManage) {
-                    <button class="danger" (click)="deleteYear(year)">ลบ</button>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      } @else {
-        <p class="empty">ยังไม่มีปี พ.ศ. สำหรับโมดูลภาษี</p>
-      }
-    
-    
-      @if (yearTotal > 0) {
-        <div class="pagination">
-          <span>Showing {{ yearStartItem }}-{{ yearEndItem }} of {{ yearTotal }}</span>
-          <div class="pager-actions">
-            <button class="ghost" [disabled]="yearPage <= 1" (click)="prevYearPage()">Prev</button>
-            <span>Page {{ yearPage }} / {{ yearTotalPages }}</span>
-            <button class="ghost" [disabled]="yearPage >= yearTotalPages" (click)="nextYearPage()">Next</button>
-          </div>
-        </div>
-      }
-    </section>
-    
-    @if (selectedYearId) {
-      <section class="card">
-        <div class="manage-head">
-          <h3>จัดการปี {{ selectedYear?.yearBe }} ({{ selectedYear?.hospcode }})</h3>
-          <div class="view-switch">
-            <button
-              class="ghost"
-              [class.active]="activeManageView === 'documents'"
-              (click)="setManageView('documents')"
-              >
-              รายการเอกสาร
-            </button>
-            @if (canManage) {
-              <button
-                class="ghost"
-                [class.active]="activeManageView === 'upload'"
-                (click)="setManageView('upload')"
-                >
-                อัปโหลด
-              </button>
-            }
-            @if (canViewYearlyOverview) {
-              <button
-                class="ghost"
-                [class.active]="activeManageView === 'yearly-overview'"
-                (click)="setManageView('yearly-overview')"
-                >
-                ข้อมูลทุกคนรายปี
-              </button>
-            }
-          </div>
-        </div>
-        @if (canManage && activeManageView === 'upload') {
-          <div class="upload-grid">
-            <section class="upload-box">
-              <h4>เพิ่มแบบรายบุคคล</h4>
-              <p class="note">เพิ่มหลายรายการได้ในครั้งเดียว (cid + pdf) และตรวจว่า PDF ต้องมี 1 หน้า</p>
-              @for (row of individualRows; track row; let i = $index) {
-                <div class="person-row">
-                  <input [(ngModel)]="row.cid" maxlength="13" placeholder="เลขบัตร 13 หลัก" />
-                  <input type="file" accept=".pdf,application/pdf" (change)="onIndividualFileChange($event, i)" />
-                  <button class="ghost" (click)="removeIndividualRow(i)" [disabled]="individualRows.length === 1">ลบ</button>
-                </div>
-              }
-              <div class="inline-actions">
-                <button class="ghost" (click)="addIndividualRow()">+ เพิ่มแถว</button>
-                <button [disabled]="previewLoading || confirmingPreview" (click)="prepareIndividualUploadPreview()">
-                  ตรวจสอบก่อนบันทึก
-                </button>
-              </div>
-            </section>
-            <section class="upload-box">
-              <h4>เพิ่มแบบเป็นชุด (pdf + txt)</h4>
-              <p class="note">ตรวจจำนวนหน้า pdf เท่าจำนวนบรรทัด txt และตรวจ pattern อัตโนมัติ</p>
-              <label class="file-field">
-                <span>PDF ต้นฉบับ</span>
-                <input type="file" accept=".pdf,application/pdf" (change)="onBatchPdfChange($event)" />
-                @if (batchPdfFile) {
-                  <small>{{ batchPdfFile.name }}</small>
-                }
-              </label>
-              <label class="file-field">
-                <span>TXT mapping</span>
-                <input type="file" accept=".txt,text/plain" (change)="onBatchTxtChange($event)" />
-                @if (batchTxtFile) {
-                  <small>{{ batchTxtFile.name }}</small>
-                }
-              </label>
-              <button [disabled]="previewLoading || confirmingPreview" (click)="prepareBatchUploadPreview()">
-                ตรวจสอบก่อนบันทึก
-              </button>
-            </section>
-          </div>
-        }
-        @if (activeManageView === 'upload' && activePreviewMode) {
-          <section class="preview-box">
-            <h4>ตัวอย่างก่อนบันทึกจริง</h4>
-            <p class="note">ตรวจชื่อไฟล์และ PDF ตัวอย่างให้ถูกต้อง แล้วค่อยยืนยันบันทึก</p>
-            @if (activePreviewMode === 'individual') {
-              <div>
-                @if (individualPreviewItems.length) {
-                  <table class="preview-table">
-                    <thead>
-                      <tr>
-                        <th>CID</th>
-                        <th>ไฟล์ใหม่</th>
-                        <th>ไฟล์ต้นฉบับ</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (item of pagedIndividualPreviewItems; track item) {
-                        <tr>
-                          <td>{{ item.cid }}</td>
-                          <td>{{ item.fileName }}</td>
-                          <td>{{ item.originalFileName }}</td>
-                          <td>
-                            <button class="ghost" (click)="openIndividualPreview(item)">ดู PDF</button>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                }
-                @if (individualPreviewTotal > 0) {
-                  <div class="pagination">
-                    <span>Showing {{ individualPreviewStartItem }}-{{ individualPreviewEndItem }} of {{ individualPreviewTotal }}</span>
-                    <div class="pager-actions">
-                      <button class="ghost" [disabled]="individualPreviewPage <= 1" (click)="prevIndividualPreviewPage()">Prev</button>
-                      <span>Page {{ individualPreviewPage }} / {{ individualPreviewTotalPages }}</span>
-                      <button class="ghost" [disabled]="individualPreviewPage >= individualPreviewTotalPages" (click)="nextIndividualPreviewPage()">Next</button>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-            @if (activePreviewMode === 'batch') {
-              <div>
-                <p class="note">
-                  จำนวนหน้า PDF: {{ batchPreviewPageCount }} | จำนวนบรรทัด TXT: {{ batchPreviewLineCount }} | Delimiter: {{ batchPreviewDelimiter }}
-                </p>
-                @if (batchPreviewItems.length) {
-                  <table class="preview-table">
-                    <thead>
-                      <tr>
-                        <th>หน้า PDF</th>
-                        <th>CID</th>
-                        <th>ไฟล์ที่</th>
-                        <th>ไฟล์ใหม่</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (item of pagedBatchPreviewItems; track item) {
-                        <tr>
-                          <td>{{ item.pageNo }}</td>
-                          <td>{{ item.cid }}</td>
-                          <td>{{ item.fileNo }}</td>
-                          <td>{{ item.fileName }}</td>
-                          <td>
-                            <button class="ghost" (click)="openBatchSplitPreview(item)">ดู PDF ที่ตัดแล้ว</button>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                }
-                @if (batchPreviewTotal > 0) {
-                  <div class="pagination">
-                    <span>Showing {{ batchPreviewStartItem }}-{{ batchPreviewEndItem }} of {{ batchPreviewTotal }}</span>
-                    <div class="pager-actions">
-                      <button class="ghost" [disabled]="batchPreviewPage <= 1" (click)="prevBatchPreviewPage()">Prev</button>
-                      <span>Page {{ batchPreviewPage }} / {{ batchPreviewTotalPages }}</span>
-                      <button class="ghost" [disabled]="batchPreviewPage >= batchPreviewTotalPages" (click)="nextBatchPreviewPage()">Next</button>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-            <div class="inline-actions">
-              <button [disabled]="confirmingPreview" (click)="confirmPreviewUpload()">
-                {{ confirmingPreview ? 'กำลังบันทึก...' : 'ยืนยันบันทึกจริง' }}
-              </button>
-              <button class="ghost" [disabled]="confirmingPreview" (click)="cancelUploadPreview()">ยกเลิก</button>
-            </div>
-          </section>
-        }
-        @if (activeManageView === 'documents') {
-          <div>
-            <div class="toolbar">
-              <input [(ngModel)]="search" placeholder="ค้นหาเลขบัตร/ชื่อไฟล์" (keyup.enter)="searchSubmit()" />
-              <button (click)="searchSubmit()">Search</button>
-              <button class="ghost" (click)="resetSearch()">Clear</button>
-            </div>
-            @if (documents.length) {
-              <table class="compact-table">
-                <thead>
-                  <tr>
-                    <th>ชื่อไฟล์</th>
-                    <th>ประเภท</th>
-                    <th>Updated</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of documents; track row) {
-                    <tr>
-                      <td class="file-name" [title]="row.file_name">{{ row.file_name }}</td>
-                      <td>{{ row.source_type }}</td>
-                      <td>{{ row.updated_at | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-                      <td class="actions">
-                        <button class="ghost" (click)="downloadDocument(row)">เปิดไฟล์</button>
-                        @if (canManage) {
-                          <button class="danger" (click)="deleteDocument(row)">ลบ</button>
-                        }
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            } @else {
-              <p class="empty">ยังไม่มีรายการรายบุคคลในปีนี้</p>
-            }
-            @if (total > 0) {
-              <div class="pagination">
-                <span>Showing {{ startItem }}-{{ endItem }} of {{ total }}</span>
-                <div class="pager-actions">
-                  <button class="ghost" [disabled]="page <= 1" (click)="prevPage()">Prev</button>
-                  <span>Page {{ page }} / {{ totalPages }}</span>
-                  <button class="ghost" [disabled]="page >= totalPages" (click)="nextPage()">Next</button>
-                </div>
-              </div>
-            }
-          </div>
-        }
-        @if (activeManageView === 'yearly-overview') {
-          <div>
-            <div class="toolbar">
-              <input
-                [(ngModel)]="yearlyOverviewSearch"
-                placeholder="ค้นหาเลขบัตร / Hospcode / ชื่อไฟล์"
-                (keyup.enter)="searchYearlyOverview()"
-                />
-              <button (click)="searchYearlyOverview()">ค้นหา</button>
-              <button class="ghost" (click)="resetYearlyOverviewSearch()">ล้าง</button>
-            </div>
-            @if (yearlyOverviewRows.length) {
-              <table class="compact-table">
-                <thead>
-                  <tr>
-                    <th>เลขบัตร</th>
-                    <th>จำนวนไฟล์</th>
-                    <th>จำนวนหน่วยงาน</th>
-                    <th>Hospcode ที่พบ</th>
-                    <th>Updated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of yearlyOverviewRows; track row) {
-                    <tr>
-                      <td>{{ row.cid }}</td>
-                      <td>{{ row.totalFiles }}</td>
-                      <td>{{ row.hospcodeCount }}</td>
-                      <td>{{ row.hospcodes || '-' }}</td>
-                      <td>{{ row.updatedAt | date:'dd MMM yyyy HH:mm':'Asia/Bangkok':'th-TH' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            } @else {
-              <p class="empty">ไม่พบข้อมูลรายปีตามเงื่อนไขที่ค้นหา</p>
-            }
-            @if (yearlyOverviewTotal > 0) {
-              <div class="pagination">
-                <span>Showing {{ yearlyOverviewStartItem }}-{{ yearlyOverviewEndItem }} of {{ yearlyOverviewTotal }}</span>
-                <div class="pager-actions">
-                  <button class="ghost" [disabled]="yearlyOverviewPage <= 1" (click)="prevYearlyOverviewPage()">Prev</button>
-                  <span>Page {{ yearlyOverviewPage }} / {{ yearlyOverviewTotalPages }}</span>
-                  <button
-                    class="ghost"
-                    [disabled]="yearlyOverviewPage >= yearlyOverviewTotalPages"
-                    (click)="nextYearlyOverviewPage()"
-                    >
-                    Next
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        }
-      </section>
-    }
-    `,
-    changeDetection: ChangeDetectionStrategy.Eager,
-    styles: [
-        `
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; }
-    h2, h3, h4 { margin: 0 0 8px; line-height: 1.2; }
-    .note { margin: 4px 0 8px; color: var(--muted); font-size: 0.86rem; }
-    .error { margin: 4px 0 8px; color: var(--danger); font-size: 0.86rem; }
-    .error-banner {
-      margin: 6px 0 10px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: 1px solid #ef4444;
-      background: #fff1f2;
-      color: #9f1239;
-      font-size: 0.88rem;
-    }
-    .success { margin: 4px 0 8px; color: #1b7b53; font-size: 0.86rem; }
-    input { padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
-    button { border: 0; background: var(--brand); color: #fff; border-radius: 8px; padding: 6px 9px; cursor: pointer; white-space: nowrap; }
-    button.ghost { border: 1px solid var(--line); background: transparent; color: inherit; }
-    button.danger { background: var(--danger); }
-    button:disabled { opacity: 0.65; cursor: not-allowed; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border-bottom: 1px solid var(--line); padding: 7px 8px; text-align: left; font-size: 0.86rem; vertical-align: middle; }
-    tr.selected { background: #f3f9f8; }
-    .manage-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-    .view-switch { display: flex; gap: 6px; }
-    .view-switch button.active { background: var(--brand); color: #fff; border-color: var(--brand); }
-    .actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-    .year-create { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 6px; margin-bottom: 8px; }
-    .year-filter { display: grid; grid-template-columns: minmax(180px, 240px) auto auto; gap: 6px; margin-bottom: 8px; }
-    .upload-grid { display: grid; grid-template-columns: repeat(2, minmax(240px, 1fr)); gap: 8px; margin-bottom: 8px; }
-    .upload-box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: var(--surface-2); display: grid; gap: 6px; }
-    .preview-box { border: 1px dashed #9db7b0; border-radius: 10px; padding: 10px; background: #f4faf8; display: grid; gap: 6px; margin-bottom: 8px; }
-    .preview-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; }
-    .preview-table th, .preview-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; font-size: 0.82rem; text-align: left; }
-    .person-row { display: grid; grid-template-columns: 1fr 1.3fr auto; gap: 6px; align-items: center; }
-    .file-field { display: grid; gap: 4px; font-size: 0.84rem; color: var(--muted); }
-    .file-field small { color: var(--muted); word-break: break-all; }
-    .inline-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) auto auto; gap: 6px; margin: 8px 0; }
-    .empty { margin: 10px 0; color: var(--muted); }
-    .pagination { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.82rem; }
-    .pager-actions { display: flex; align-items: center; gap: 6px; }
-    .compact-table th, .compact-table td { padding: 6px 8px; font-size: 0.84rem; }
-    .compact-table td.file-name { max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .compact-table td .ghost, .compact-table td .danger { padding: 5px 8px; font-size: 0.8rem; }
-    .compact-table .actions { gap: 4px; }
-    @media (max-width: 1100px) {
-      .manage-head { align-items: flex-start; }
-      .view-switch { width: 100%; }
-      .view-switch button { flex: 1; text-align: center; }
-      .year-create { grid-template-columns: 1fr; }
-      .year-filter { grid-template-columns: 1fr; }
-      .upload-grid { grid-template-columns: 1fr; }
-      .person-row { grid-template-columns: 1fr; }
-      .toolbar { grid-template-columns: 1fr; }
-      .pagination { flex-direction: column; align-items: flex-start; }
-      .compact-table td.file-name { max-width: 220px; }
-    }
-    `
-    ]
+    imports: [FormsModule, TableComponent],
+    templateUrl: './tax-management.component.html',
+    providers: [DatePipe],
+    changeDetection: ChangeDetectionStrategy.Eager
 })
 export class TaxManagementComponent implements OnInit, OnDestroy {
   years: TaxYearRow[] = [];
@@ -511,10 +92,77 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
   errorMessage = '';
   successMessage = '';
 
+  documentsLoading = false;
+  overviewLoading = false;
+
+  /**
+   * สรุปผลของการอัปโหลดรอบล่าสุด
+   *
+   * เดิมพออัปโหลดเสร็จจะกระโดดไปหน้ารายการเอกสารทันที ทำให้คนที่ต้องอัปหลายชุด
+   * ติดกันต้องกดกลับมาเองทุกครั้ง และไม่ทันเห็นว่ารอบที่แล้วเข้าไปกี่รายการ
+   * ตอนนี้อยู่หน้าเดิมแล้วสรุปผลไว้ให้ พร้อมปุ่มไปดูประวัติเมื่อต้องการ
+   */
+  uploadResult: { count: number; mode: UploadPreviewMode } | null = null;
+
+  /**
+   * ผู้ใช้ทุกคนในระบบมีขอบเขตหน่วยงานเดียว และ 100 จาก 103 หน่วยงานมีปีภาษีปีเดียว
+   * ตารางปีจึงเป็นแถวเดียวที่กินพื้นที่เปล่า ๆ ย่อเก็บไว้เมื่อมีไม่เกินหนึ่งปี
+   * ผู้ที่เห็นหลายปี (เช่น super_admin ที่เห็นครบ 106 ปี) ยังได้ตารางเต็มเหมือนเดิม
+   */
+  showYearList = false;
+
+  /**
+   * นิยามคอลัมน์ของแต่ละตาราง
+   *
+   * ตารางปี ตัวอย่างรายบุคคล และตัวอย่างแบบชุด แบ่งหน้าฝั่ง client เหมือนเดิม
+   * (ข้อมูลมาครบชุดอยู่แล้ว) ส่วนรายการเอกสารและภาพรวมรายปีแบ่งหน้าฝั่ง server
+   */
+  readonly yearColumns: TableColumn<TaxYearRow>[] = [
+    { key: 'yearBe', header: 'ปี พ.ศ.', cell: (row) => String(row.yearBe), cellClass: 'tabular-nums' },
+    { key: 'hospcode', header: 'หน่วยงาน', cell: (row) => String(row.hospcode ?? '-'), cellClass: 'font-mono' },
+    { key: 'count', header: 'จำนวนไฟล์', cell: (row) => String(row.documentCount ?? 0), cellClass: 'tabular-nums text-end whitespace-nowrap' },
+    { key: 'updated', header: 'อัปเดตล่าสุด', cell: (row) => this.formatDateTime(row.updatedAt), hideOnMobile: true }
+  ];
+
+  readonly documentColumns: TableColumn<TaxDocumentRow>[] = [
+    { key: 'file', header: 'ชื่อไฟล์', cell: (row) => String(row.file_name ?? '-'), cellClass: 'font-mono' },
+    { key: 'type', header: 'ที่มา', cell: (row) => String(row.source_type ?? '-'), hideOnMobile: true },
+    { key: 'updated', header: 'อัปเดตล่าสุด', cell: (row) => this.formatDateTime(row.updated_at), hideOnMobile: true }
+  ];
+
+  readonly overviewColumns: TableColumn<YearlyOverviewRow>[] = [
+    { key: 'cid', header: 'เลขบัตรประชาชน', cell: (row) => String(row.cid ?? '-'), cellClass: 'font-mono tabular-nums' },
+    { key: 'files', header: 'จำนวนไฟล์', cell: (row) => String(row.totalFiles ?? 0), cellClass: 'tabular-nums text-end whitespace-nowrap' },
+    { key: 'offices', header: 'จำนวนหน่วยงาน', cell: (row) => String(row.hospcodeCount ?? 0), cellClass: 'tabular-nums text-end whitespace-nowrap' },
+    { key: 'hospcodes', header: 'หน่วยงานที่พบ', cell: (row) => String(row.hospcodes || '-'), cellClass: 'font-mono', hideOnMobile: true },
+    { key: 'updated', header: 'อัปเดตล่าสุด', cell: (row) => this.formatDateTime(row.updatedAt), hideOnMobile: true }
+  ];
+
+  readonly individualPreviewColumns: TableColumn<IndividualPreviewItem>[] = [
+    { key: 'cid', header: 'เลขบัตรประชาชน', cell: (row) => String(row.cid ?? '-'), cellClass: 'font-mono tabular-nums' },
+    { key: 'new', header: 'ชื่อไฟล์ใหม่', cell: (row) => String(row.fileName ?? '-'), cellClass: 'font-mono' },
+    { key: 'origin', header: 'ไฟล์ต้นฉบับ', cell: (row) => String(row.originalFileName ?? '-'), hideOnMobile: true }
+  ];
+
+  readonly batchPreviewColumns: TableColumn<BatchUploadPreviewRow>[] = [
+    { key: 'page', header: 'หน้า PDF', cell: (row) => String(row.pageNo), cellClass: 'tabular-nums text-end whitespace-nowrap' },
+    { key: 'cid', header: 'เลขบัตรประชาชน', cell: (row) => String(row.cid ?? '-'), cellClass: 'font-mono tabular-nums' },
+    { key: 'fileNo', header: 'ไฟล์ที่', cell: (row) => String(row.fileNo), cellClass: 'tabular-nums text-end whitespace-nowrap' },
+    { key: 'new', header: 'ชื่อไฟล์ใหม่', cell: (row) => String(row.fileName ?? '-'), cellClass: 'font-mono' }
+  ];
+
   constructor(
     private readonly taxService: TaxService,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly dialogs: AppDialogService,
+    private readonly datePipe: DatePipe
   ) {}
+
+  /** รูปแบบวันที่เดียวกับของเดิมทุกตาราง */
+  formatDateTime(value: string | null | undefined): string {
+    if (!value) return '-';
+    return this.datePipe.transform(value, 'dd MMM yyyy HH:mm', 'Asia/Bangkok', 'th-TH') ?? '-';
+  }
 
   ngOnInit(): void {
     const user = this.authService.currentUser;
@@ -544,9 +192,18 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     return this.years.find((item) => item.id === this.selectedYearId) ?? null;
   }
 
+  /**
+   * เลขปีสองหลักท้ายที่ใช้ขึ้นต้นชื่อไฟล์
+   *
+   * เดิมอ่านจาก createYearForm ซึ่งเป็นฟอร์ม "เพิ่มปี" ไม่ใช่ปีที่กำลังเปิดอยู่
+   * ผลคือหัวข้อแสดง YY_เลขบัตร_ลำดับ.pdf เกือบตลอดเวลา เพราะฟอร์มนั้นว่าง
+   * ตอนนี้ยึดปีที่เปิดอยู่เป็นหลัก และใช้ค่าที่กำลังพิมพ์เฉพาะตอนยังไม่ได้เลือกปี
+   */
   get selectedYearShortPreview(): string {
-    const yearBe = this.normalizeYearBe(this.createYearForm.yearBe);
-    if (yearBe === null) return 'YY';
+    const yearBe = this.selectedYear
+      ? Number(this.selectedYear.yearBe)
+      : this.normalizeYearBe(this.createYearForm.yearBe);
+    if (yearBe === null || !Number.isInteger(yearBe)) return 'YY';
     return String(yearBe % 100).padStart(2, '0');
   }
 
@@ -556,15 +213,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   get yearTotalPages(): number {
     return this.yearTotal > 0 ? Math.ceil(this.yearTotal / this.yearPageSize) : 1;
-  }
-
-  get yearStartItem(): number {
-    if (!this.yearTotal) return 0;
-    return (this.yearPage - 1) * this.yearPageSize + 1;
-  }
-
-  get yearEndItem(): number {
-    return Math.min(this.yearPage * this.yearPageSize, this.yearTotal);
   }
 
   get pagedYears(): TaxYearRow[] {
@@ -580,15 +228,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     return this.individualPreviewTotal > 0 ? Math.ceil(this.individualPreviewTotal / this.individualPreviewPageSize) : 1;
   }
 
-  get individualPreviewStartItem(): number {
-    if (!this.individualPreviewTotal) return 0;
-    return (this.individualPreviewPage - 1) * this.individualPreviewPageSize + 1;
-  }
-
-  get individualPreviewEndItem(): number {
-    return Math.min(this.individualPreviewPage * this.individualPreviewPageSize, this.individualPreviewTotal);
-  }
-
   get pagedIndividualPreviewItems(): IndividualPreviewItem[] {
     const start = (this.individualPreviewPage - 1) * this.individualPreviewPageSize;
     return this.individualPreviewItems.slice(start, start + this.individualPreviewPageSize);
@@ -602,15 +241,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     return this.batchPreviewTotal > 0 ? Math.ceil(this.batchPreviewTotal / this.batchPreviewPageSize) : 1;
   }
 
-  get batchPreviewStartItem(): number {
-    if (!this.batchPreviewTotal) return 0;
-    return (this.batchPreviewPage - 1) * this.batchPreviewPageSize + 1;
-  }
-
-  get batchPreviewEndItem(): number {
-    return Math.min(this.batchPreviewPage * this.batchPreviewPageSize, this.batchPreviewTotal);
-  }
-
   get pagedBatchPreviewItems(): BatchUploadPreviewRow[] {
     const start = (this.batchPreviewPage - 1) * this.batchPreviewPageSize;
     return this.batchPreviewItems.slice(start, start + this.batchPreviewPageSize);
@@ -620,26 +250,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     return this.total > 0 ? Math.ceil(this.total / this.pageSize) : 1;
   }
 
-  get startItem(): number {
-    if (!this.total) return 0;
-    return (this.page - 1) * this.pageSize + 1;
-  }
-
-  get endItem(): number {
-    return Math.min(this.page * this.pageSize, this.total);
-  }
-
   get yearlyOverviewTotalPages(): number {
     return this.yearlyOverviewTotal > 0 ? Math.ceil(this.yearlyOverviewTotal / this.yearlyOverviewPageSize) : 1;
-  }
-
-  get yearlyOverviewStartItem(): number {
-    if (!this.yearlyOverviewTotal) return 0;
-    return (this.yearlyOverviewPage - 1) * this.yearlyOverviewPageSize + 1;
-  }
-
-  get yearlyOverviewEndItem(): number {
-    return Math.min(this.yearlyOverviewPage * this.yearlyOverviewPageSize, this.yearlyOverviewTotal);
   }
 
   loadYears(): void {
@@ -716,9 +328,24 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   deleteYear(year: TaxYearRow): void {
     this.clearMessages();
-    const confirmed = window.confirm(`ยืนยันลบปี พ.ศ. ${year.yearBe} และรายการไฟล์ทั้งหมดในปีนี้?`);
-    if (!confirmed) return;
 
+    this.dialogs
+      .confirm({
+        title: 'ยืนยันลบปีภาษี',
+        message: `ปี พ.ศ. ${year.yearBe} ของหน่วยงาน ${year.hospcode}`,
+        consequences: [
+          `ลบรายการไฟล์ในปีนี้ทั้งหมด ${year.documentCount} รายการ`,
+          'ผู้ที่มีไฟล์อยู่ในปีนี้จะดาวน์โหลดผ่านระบบไม่ได้อีก'
+        ],
+        warning: 'มีระบบภายนอกดึงไฟล์ภาษีผ่าน endpoint ภายในอยู่ การลบกระทบระบบนั้นด้วย',
+        confirmLabel: 'ลบปีภาษี',
+        danger: true
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => this.runDeleteYear(year));
+  }
+
+  private runDeleteYear(year: TaxYearRow): void {
     this.taxService.deleteYear(year.id).subscribe({
       next: () => {
         this.successMessage = 'ลบปี พ.ศ. สำเร็จ';
@@ -735,6 +362,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   selectYear(yearId: number): void {
     this.clearMessages();
+    this.uploadResult = null;
     this.clearUploadPreview(true);
     this.selectedYearId = yearId;
     this.ensureSelectedYearVisible();
@@ -747,18 +375,56 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     if (view === 'yearly-overview' && !this.canViewYearlyOverview) {
       return;
     }
+    if (view !== 'upload') this.uploadResult = null;
     this.activeManageView = view;
     this.loadSelectedManageViewData();
   }
 
-  prevYearPage(): void {
-    if (this.yearPage <= 1) return;
-    this.yearPage -= 1;
+  goToHistory(): void {
+    this.uploadResult = null;
+    this.activeManageView = 'documents';
+    this.page = 1;
+    this.loadDocuments();
   }
 
-  nextYearPage(): void {
-    if (this.yearPage >= this.yearTotalPages) return;
-    this.yearPage += 1;
+  toggleYearList(): void {
+    this.showYearList = !this.showYearList;
+  }
+
+  /** ย่อได้เมื่อมีปีเดียวและไม่ได้กำลังค้นหา */
+  get canCollapseYearList(): boolean {
+    return this.years.length <= 1 && !this.yearHospcodeFilter;
+  }
+
+  get yearListVisible(): boolean {
+    return this.showYearList || !this.canCollapseYearList;
+  }
+
+  onYearPageChange(event: { page: number; pageSize: number }): void {
+    this.yearPage = event.page;
+    this.yearPageSize = event.pageSize;
+  }
+
+  onDocumentPageChange(event: { page: number; pageSize: number }): void {
+    this.page = event.page;
+    this.pageSize = event.pageSize;
+    this.loadDocuments();
+  }
+
+  onOverviewPageChange(event: { page: number; pageSize: number }): void {
+    this.yearlyOverviewPage = event.page;
+    this.yearlyOverviewPageSize = event.pageSize;
+    this.loadYearlyOverview();
+  }
+
+  onIndividualPreviewPageChange(event: { page: number; pageSize: number }): void {
+    this.individualPreviewPage = event.page;
+    this.individualPreviewPageSize = event.pageSize;
+  }
+
+  onBatchPreviewPageChange(event: { page: number; pageSize: number }): void {
+    this.batchPreviewPage = event.page;
+    this.batchPreviewPageSize = event.pageSize;
   }
 
   addIndividualRow(): void {
@@ -781,6 +447,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   prepareIndividualUploadPreview(): void {
     this.clearMessages();
+    this.uploadResult = null;
     if (!this.selectedYearId) return;
     this.activeManageView = 'upload';
 
@@ -848,6 +515,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   prepareBatchUploadPreview(): void {
     this.clearMessages();
+    this.uploadResult = null;
     if (!this.selectedYearId) return;
     this.activeManageView = 'upload';
 
@@ -905,10 +573,9 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
       this.taxService.uploadIndividual(this.selectedYearId, this.individualPreparedItems).subscribe({
         next: (res) => {
           this.confirmingPreview = false;
-          this.successMessage = `เพิ่มแบบรายบุคคลสำเร็จ ${res.data?.createdCount ?? 0} รายการ`;
+          this.uploadResult = { count: Number(res.data?.createdCount ?? 0), mode: 'individual' };
           this.individualRows = [{ cid: '', file: null }];
           this.page = 1;
-          this.activeManageView = 'documents';
           this.clearUploadPreview(true);
           this.loadYears();
         },
@@ -930,11 +597,10 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
       next: (res) => {
         const createdCount = res.data?.createdCount ?? 0;
         this.confirmingPreview = false;
-        this.successMessage = `เพิ่มแบบชุดสำเร็จ ${createdCount} รายการ`;
+        this.uploadResult = { count: createdCount, mode: 'batch' };
         this.batchPdfFile = null;
         this.batchTxtFile = null;
         this.page = 1;
-        this.activeManageView = 'documents';
         this.clearUploadPreview(true);
         this.loadYears();
       },
@@ -947,26 +613,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   cancelUploadPreview(): void {
     this.clearUploadPreview(true);
-  }
-
-  prevIndividualPreviewPage(): void {
-    if (this.individualPreviewPage <= 1) return;
-    this.individualPreviewPage -= 1;
-  }
-
-  nextIndividualPreviewPage(): void {
-    if (this.individualPreviewPage >= this.individualPreviewTotalPages) return;
-    this.individualPreviewPage += 1;
-  }
-
-  prevBatchPreviewPage(): void {
-    if (this.batchPreviewPage <= 1) return;
-    this.batchPreviewPage -= 1;
-  }
-
-  nextBatchPreviewPage(): void {
-    if (this.batchPreviewPage >= this.batchPreviewTotalPages) return;
-    this.batchPreviewPage += 1;
   }
 
   openIndividualPreview(item: IndividualPreviewItem): void {
@@ -993,6 +639,7 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
   loadYearlyOverview(): void {
     if (!this.selectedYearId) return;
     if (!this.canViewYearlyOverview) return;
+    this.overviewLoading = true;
 
     this.taxService
       .listYearlyOverview({
@@ -1005,17 +652,22 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.yearlyOverviewRows = res.data?.rows || [];
           this.yearlyOverviewTotal = Number(res.data?.total || 0);
+          this.overviewLoading = false;
           if (this.yearlyOverviewPage > this.yearlyOverviewTotalPages) {
             this.yearlyOverviewPage = this.yearlyOverviewTotalPages;
             this.loadYearlyOverview();
           }
         },
-        error: (error) => this.handleApiError(error, 'LOAD_TAX_YEARLY_OVERVIEW_FAILED')
+        error: (error) => {
+          this.overviewLoading = false;
+          this.handleApiError(error, 'LOAD_TAX_YEARLY_OVERVIEW_FAILED');
+        }
       });
   }
 
   loadDocuments(): void {
     if (!this.selectedYearId) return;
+    this.documentsLoading = true;
 
     this.taxService
       .listDocuments({
@@ -1028,12 +680,16 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
         next: (res) => {
           this.documents = res.data?.rows || [];
           this.total = Number(res.data?.total || 0);
+          this.documentsLoading = false;
           if (this.page > this.totalPages) {
             this.page = this.totalPages;
             this.loadDocuments();
           }
         },
-        error: (error) => this.handleApiError(error, 'LOAD_TAX_DOCUMENTS_FAILED')
+        error: (error) => {
+          this.documentsLoading = false;
+          this.handleApiError(error, 'LOAD_TAX_DOCUMENTS_FAILED');
+        }
       });
   }
 
@@ -1050,18 +706,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     this.loadYearlyOverview();
   }
 
-  prevYearlyOverviewPage(): void {
-    if (this.yearlyOverviewPage <= 1) return;
-    this.yearlyOverviewPage -= 1;
-    this.loadYearlyOverview();
-  }
-
-  nextYearlyOverviewPage(): void {
-    if (this.yearlyOverviewPage >= this.yearlyOverviewTotalPages) return;
-    this.yearlyOverviewPage += 1;
-    this.loadYearlyOverview();
-  }
-
   searchSubmit(): void {
     this.activeManageView = 'documents';
     this.page = 1;
@@ -1072,18 +716,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     this.activeManageView = 'documents';
     this.search = '';
     this.page = 1;
-    this.loadDocuments();
-  }
-
-  prevPage(): void {
-    if (this.page <= 1) return;
-    this.page -= 1;
-    this.loadDocuments();
-  }
-
-  nextPage(): void {
-    if (this.page >= this.totalPages) return;
-    this.page += 1;
     this.loadDocuments();
   }
 
@@ -1113,9 +745,24 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
 
   deleteDocument(row: TaxDocumentRow): void {
     this.clearMessages();
-    const confirmed = window.confirm(`ยืนยันลบไฟล์ ${row.file_name}?`);
-    if (!confirmed) return;
 
+    this.dialogs
+      .confirm({
+        title: 'ยืนยันลบไฟล์',
+        message: row.file_name,
+        consequences: [
+          'ลบรายการออกจากระบบและลบไฟล์ออกจากที่จัดเก็บ',
+          'เจ้าของเอกสารจะดาวน์โหลดไฟล์นี้ไม่ได้อีก'
+        ],
+        warning: 'มีระบบภายนอกดึงไฟล์ภาษีผ่าน endpoint ภายในอยู่ การลบกระทบระบบนั้นด้วย',
+        confirmLabel: 'ลบไฟล์',
+        danger: true
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => this.runDeleteDocument(row));
+  }
+
+  private runDeleteDocument(row: TaxDocumentRow): void {
     this.taxService.deleteDocument(row.id).subscribe({
       next: () => {
         this.successMessage = 'ลบรายการสำเร็จ';
@@ -1247,9 +894,6 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
     const resolvedCode = this.resolveErrorCode(error, fallbackCode);
     this.handleError(resolvedCode);
     console.error('[tax-management] api-error', error);
-    if (this.errorMessage) {
-      window.alert(this.errorMessage);
-    }
   }
 
   private resolveErrorCode(error: any, fallbackCode: string): string {
@@ -1292,7 +936,8 @@ export class TaxManagementComponent implements OnInit, OnDestroy {
       INVALID_YEAR_BE: 'ปี พ.ศ. ไม่ถูกต้อง',
       TAX_YEAR_ALREADY_EXISTS: 'ปี พ.ศ. นี้มีอยู่แล้ว',
       HOSPCODE_REQUIRED: 'กรุณาระบุ Hospcode',
-      HOSPCODE_NOT_FOUND: 'ไม่พบ Hospcode นี้ในตารางหน่วยงาน (organizations)',
+      HOSPCODE_NOT_FOUND: 'ไม่พบรหัสหน่วยงานนี้ในทะเบียนกลาง',
+      OFFICE_WITHOUT_CODE5: 'หน่วยงานนี้ยังไม่มีรหัส 5 หลัก จึงยังสร้างปีภาษีไม่ได้',
       TAX_YEAR_NOT_FOUND: 'ไม่พบปี พ.ศ. ที่เลือก',
       TAX_DOCUMENT_NOT_FOUND: 'ไม่พบรายการไฟล์',
       SCOPE_FORBIDDEN: 'ไม่มีสิทธิ์เข้าถึงข้อมูลหน่วยงานนี้',

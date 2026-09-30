@@ -1,0 +1,146 @@
+<section class="grid gap-5">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="m-0 mb-1 text-2xl font-bold">ข้อมูลบุคลากร</h1>
+      <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+        ทะเบียนบุคลากรที่ใช้จับคู่กับการลงเวลาเข้าออกงาน
+      </p>
+    </div>
+
+    <button *hasPermission="'personnel.manage'"
+            type="button"
+            class="btn-base btn-primary"
+            (click)="openCreate()">เพิ่มบุคลากร</button>
+  </header>
+
+  @if (successMessage()) {
+    <p class="m-0 rounded-lg bg-brand-50 px-4 py-3 leading-relaxed text-brand-800" role="status">
+      {{ successMessage() }}
+    </p>
+  }
+
+  <div class="flex flex-wrap items-center gap-2">
+    <div class="w-full sm:w-96">
+      <label for="personnel-search" class="sr-only">ค้นหาบุคลากร</label>
+      <input id="personnel-search"
+             type="search"
+             autocomplete="off"
+             class="field-base"
+             placeholder="ค้นด้วยเลขบัตรประชาชน ชื่อ หรือนามสกุล"
+             [value]="searchText()"
+             (input)="onSearchInput($any($event.target).value)"
+             (keyup.enter)="onSearch()" />
+    </div>
+    <button type="button" class="btn-base btn-primary" (click)="onSearch()">ค้นหา</button>
+    @if (searchText()) {
+      <button type="button" class="btn-base btn-ghost text-(--muted)" (click)="onClearSearch()">ล้าง</button>
+    }
+  </div>
+
+  <app-table
+    [columns]="columns()"
+    [rows]="rows()"
+    [total]="total()"
+    [page]="page()"
+    [pageSize]="pageSize()"
+    [loading]="loading()"
+    [errorMessage]="errorMessage()"
+    emptyMessage="ยังไม่มีข้อมูลบุคลากรในหน่วยงานที่คุณดูแล"
+    (pageChange)="onPageChange($event)">
+
+    <ng-template #rowActions let-row>
+      <div *hasPermission="'personnel.manage'" class="flex justify-end gap-1">
+        <button type="button" class="btn-base btn-sm btn-ghost" (click)="openEdit(row)">แก้ไข</button>
+        <button type="button" class="btn-base btn-sm btn-danger" (click)="confirmDelete(row)">ลบ</button>
+      </div>
+    </ng-template>
+  </app-table>
+
+  <!-- ─────────── นำเข้าจาก Excel ─────────── -->
+  <div *hasPermission="'personnel.manage'"
+       class="grid gap-3 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div>
+      <h2 class="m-0 text-lg font-semibold">นำเข้าจากไฟล์ Excel</h2>
+      <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+        ใช้เพิ่มหลายคนพร้อมกัน เลขบัตรที่มีอยู่แล้วในหน่วยงานเดิมจะถูกอัปเดตชื่อให้ ไม่สร้างซ้ำ
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" class="btn-base btn-outline" (click)="downloadTemplate()">
+        ดาวน์โหลดแบบฟอร์ม
+      </button>
+
+      <label for="personnel-file" class="sr-only">เลือกไฟล์ Excel</label>
+      <input id="personnel-file"
+             type="file"
+             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+             class="field-base min-w-0 flex-1 py-1.5 sm:max-w-md"
+             (change)="onFileSelected($event)" />
+
+      <button type="button"
+              class="btn-base btn-primary"
+              [disabled]="!selectedFile() || uploading()"
+              (click)="uploadExcel()">
+        {{ uploading() ? 'กำลังนำเข้า...' : 'นำเข้าข้อมูล' }}
+      </button>
+    </div>
+
+    @if (uploadResult(); as result) {
+      <div class="grid gap-3 rounded-lg border-2 p-4"
+           [class.border-brand-700]="result.errorCount === 0"
+           [class.bg-brand-50]="result.errorCount === 0"
+           [class.border-(--danger)]="result.errorCount > 0"
+           [class.bg-red-50]="result.errorCount > 0"
+           role="status">
+        <p class="m-0 font-semibold"
+           [class.text-brand-800]="result.errorCount === 0"
+           [class.text-(--danger)]="result.errorCount > 0">
+          @if (result.errorCount === 0) {
+            นำเข้าสำเร็จทั้งหมด
+          } @else {
+            นำเข้าเสร็จแล้ว แต่มี {{ result.errorCount }} แถวที่ข้ามไป
+          }
+        </p>
+
+        <dl class="m-0 flex flex-wrap gap-x-6 gap-y-1">
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">อ่านทั้งหมด</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ result.processedCount }}</dd>
+          </div>
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">เพิ่มใหม่</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ result.insertedCount }}</dd>
+          </div>
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">อัปเดต</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ result.updatedCount }}</dd>
+          </div>
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">ข้ามไป</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ result.errorCount }}</dd>
+          </div>
+        </dl>
+
+        @if (result.errors.length) {
+          <div class="grid gap-1">
+            <p class="m-0 text-sm font-medium">แถวที่ข้ามไปและเหตุผล</p>
+            <ul class="m-0 grid max-h-48 gap-1 overflow-y-auto pl-5">
+              @for (err of result.errors; track err.rowNumber) {
+                <li class="leading-relaxed">
+                  แถว {{ err.rowNumber }} — {{ rowErrorText(err.error) }}
+                </li>
+              }
+            </ul>
+            <p class="m-0 text-sm text-(--muted)">
+              แถวที่เหลือถูกบันทึกเรียบร้อยแล้ว แก้เฉพาะแถวที่ข้ามแล้วนำเข้าใหม่ได้เลย
+            </p>
+          </div>
+        }
+
+        <button type="button" class="btn-base btn-sm btn-ghost justify-self-start text-(--muted)"
+                (click)="clearUploadResult()">ปิดข้อความนี้</button>
+      </div>
+    }
+  </div>
+</section>

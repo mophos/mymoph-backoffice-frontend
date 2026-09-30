@@ -9,14 +9,14 @@ import { LoginComponent } from './features/auth/login.component';
 import { AuthCallbackComponent } from './features/auth/auth-callback.component';
 import { UnauthorizedComponent } from './features/shared/unauthorized.component';
 import { NotFoundComponent } from './features/shared/not-found.component';
-import { AttendanceDashboardComponent } from './features/attendance/attendance-dashboard.component';
-import { HrAdminManagementComponent } from './features/hr-admin/hr-admin-management.component';
-import { PersonnelManagementComponent } from './features/personnel/personnel-management.component';
+import { AttendanceComponent } from './features/attendance/attendance.component';
+import { PersonnelComponent } from './features/personnel/personnel.component';
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
 import { TaxManagementComponent } from './features/tax/tax-management.component';
-import { OfficeSettingsComponent } from './features/office-settings/office-settings.component';
-import { MymophUsersManagementComponent } from './features/mymoph-users/mymoph-users-management.component';
+import { OfficeSettingsV2Component } from './features/office-settings-v2/office-settings.component';
+import { MymophUsersComponent } from './features/mymoph-users/mymoph-users.component';
 import { FinanceUserAdminComponent } from './features/user-admin/finance-user-admin.component';
+import { UserAdminComponent } from './features/user-admin/user-admin.component';
 
 @Component({ standalone: true, changeDetection: ChangeDetectionStrategy.Eager,
  template: '' })
@@ -41,33 +41,36 @@ export const appRoutes: Routes = [
     children: [
       {
         path: 'attendance',
-        component: AttendanceDashboardComponent,
+        component: AttendanceComponent,
         canActivate: [permissionGuard],
         data: { permission: 'attendance.read' }
       },
       {
-        path: 'hr-admin',
-        component: HrAdminManagementComponent,
+        path: 'user-admin',
+        component: UserAdminComponent,
         canActivate: [permissionGuard],
         data: { permission: 'user_admin.manage' }
       },
+      // URL เดิมยังใช้ได้ ส่งต่อไปหน้าใหม่ เพื่อไม่ให้ bookmark ของผู้ใช้เสีย
+      { path: 'hr-admin', redirectTo: 'user-admin', pathMatch: 'full' },
       {
         path: 'finance-user-admin',
         component: FinanceUserAdminComponent,
         canActivate: [permissionGuard],
-        data: { permission: 'finance_admin.manage' }
+        // backend บังคับบทบาทนี้อีกชั้น ถ้าไม่ตรวจที่นี่จะเข้าหน้าได้แต่ใช้งานไม่ได้ (ADMIN-06)
+        data: { permission: 'finance_admin.manage', roles: ['super_admin_affairs'] }
       },
       // URL เดิมยังใช้ได้ ส่งต่อไปหน้าใหม่ เพื่อไม่ให้ bookmark ของผู้ใช้เสีย
       { path: 'finance-admin', redirectTo: 'finance-user-admin', pathMatch: 'full' },
       {
         path: 'mymoph-users',
-        component: MymophUsersManagementComponent,
+        component: MymophUsersComponent,
         canActivate: [permissionGuard],
         data: { permission: 'mymoph_user.read' }
       },
       {
         path: 'personnel',
-        component: PersonnelManagementComponent,
+        component: PersonnelComponent,
         canActivate: [permissionGuard],
         data: { permission: 'personnel.read' }
       },
@@ -85,7 +88,7 @@ export const appRoutes: Routes = [
       },
       {
         path: 'office-settings',
-        component: OfficeSettingsComponent,
+        component: OfficeSettingsV2Component,
         canActivate: [permissionGuard],
         data: { permission: 'office_settings.read' }
       },

@@ -1,28 +1,14 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
-import { AuthService } from '../../core/auth/auth.service';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { filter, switchMap } from 'rxjs';
 import { HasPermissionDirective } from '../../core/directives/has-permission.directive';
-import { DataTableComponent, DataTableColumn } from '../../shared/ui/data-table/data-table.component';
-import { ConfirmDialogComponent, ConfirmDialogData } from '../../shared/ui/confirm-dialog/confirm-dialog.component';
-import { FinanceAdminService } from '../hr-admin/finance-admin.service';
-
-interface AdminRow {
-  user_id: string;
-  cid: string;
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string | null;
-  role_codes: string[];
-  hospcodes: string[];
-}
+import { TableComponent, TableColumn } from '../../shared/ui/table/table.component';
+import { AppDialogService } from '../../shared/ui/dialog/dialog.service';
+import { FinanceAdminRow, FinanceAdminService } from './finance-admin.service';
+import {
+  FinanceFormData,
+  FinanceFormDialogComponent,
+  FinanceFormResult
+} from './finance-form-dialog.component';
 
 const FINANCE_ROLE = 'admin_affairs';
 
@@ -31,58 +17,49 @@ const ERROR_TEXT: Record<string, string> = {
   FORBIDDEN: 'บัญชีของคุณไม่มีสิทธิ์ทำรายการนี้ ต้องมีบทบาท super_admin_affairs',
   NO_SCOPE_ASSIGNED: 'บัญชีของคุณยังไม่ได้รับมอบหมายหน่วยงาน ติดต่อผู้ดูแลระบบ',
   TARGET_SCOPE_OUT_OF_BOUND: 'มีหน่วยงานที่อยู่นอกขอบเขตที่คุณดูแล',
+  TARGET_OUT_OF_SCOPE: 'บัญชีเป้าหมายดูแลหน่วยงานที่อยู่นอกขอบเขตของคุณ',
+  HOSPCODES_REQUIRED: 'ต้องระบุหน่วยงานอย่างน้อยหนึ่งแห่ง',
   INVALID_HOSPCODE: 'มีรหัสหน่วยงานที่ไม่มีอยู่ในระบบ',
+  OFFICE_WITHOUT_CODE5: 'หน่วยงานนี้ยังไม่มีรหัส 5 หลัก จึงยังมอบหมายผู้ดูแลไม่ได้',
+  CID_MISMATCH: 'เลขบัตรประชาชนไม่ตรงกับบัญชีเป้าหมาย ต้องถอนสิทธิ์เดิมแล้วแต่งตั้งใหม่',
   ROLE_NOT_FOUND: 'ไม่พบบทบาท admin_affairs หรือบทบาทถูกปิดใช้งาน',
   USER_NOT_FOUND: 'ไม่พบบัญชีเป้าหมายในระบบ'
 };
 
 @Component({
   selector: 'app-finance-user-admin',
-  imports: [
-    FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule,
-    MatSelectModule, MatIconModule, MatChipsModule,
-    DataTableComponent, HasPermissionDirective
-  ],
+  imports: [TableComponent, HasPermissionDirective],
   templateUrl: './finance-user-admin.component.html',
-  styleUrl: './finance-user-admin.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FinanceUserAdminComponent {
   private readonly service = inject(FinanceAdminService);
-  private readonly authService = inject(AuthService);
-  private readonly dialog = inject(MatDialog);
+  private readonly dialogs = inject(AppDialogService);
 
-  private readonly user = toSignal(this.authService.user$, { initialValue: null });
-
-  readonly rows = signal<AdminRow[]>([]);
+  readonly rows = signal<FinanceAdminRow[]>([]);
   readonly total = signal(0);
   readonly page = signal(1);
   readonly pageSize = signal(20);
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
-
   readonly searchText = signal('');
 
-  /** null = โหมดแต่งตั้งใหม่, มีค่า = โหมดแก้ไขบัญชีนั้น */
-  readonly editing = signal<AdminRow | null>(null);
-  readonly formCid = signal('');
-  readonly formHospcodes = signal<string[]>([]);
-
-  /**
-   * ตัวเลือกหน่วยงานคือ Scope ของผู้ใช้เอง ซึ่งอยู่ใน token อยู่แล้ว
-   * backend อนุญาตเฉพาะหน่วยงานในชุดนี้ การให้เลือกแทนพิมพ์จึงทำให้
-   * TARGET_SCOPE_OUT_OF_BOUND เกิดจากหน้าเว็บไม่ได้อีก
-   *
-   * ข้อจำกัด: token มีแต่รหัส ไม่มีชื่อหน่วยงาน จนกว่า backend จะส่งชื่อมาด้วย
-   */
-  readonly hospcodeOptions = computed(() => this.user()?.hospcodes ?? []);
-  readonly isGlobalScope = computed(() => this.user()?.scopeType === 'ALL');
-
-  readonly columns: DataTableColumn<AdminRow>[] = [
+  readonly columns: TableColumn<FinanceAdminRow>[] = [
     { key: 'name', header: 'ชื่อ', cell: (row) => this.fullName(row) },
-    { key: 'cid', header: 'เลขบัตรประชาชน', cell: (row) => this.maskCid(row.cid), cssClass: 'mono' },
-    { key: 'roles', header: 'บทบาท', cell: (row) => row.role_codes.join(', ') || '-' },
-    { key: 'scope', header: 'หน่วยงาน', cell: (row) => row.hospcodes.join(', ') || '-' }
+    {
+      key: 'cid',
+      header: 'เลขบัตรประชาชน',
+      cell: (row) => this.maskCid(row.cid),
+      cellClass: 'font-mono tabular-nums'
+    },
+    { key: 'scope', header: 'หน่วยงานที่รับผิดชอบ', cell: (row) => this.officeLabel(row) },
+    {
+      key: 'count',
+      header: 'จำนวน',
+      cell: (row) => `${row.hospcodes.length} แห่ง`,
+      cellClass: 'tabular-nums text-end whitespace-nowrap',
+      hideOnMobile: true
+    }
   ];
 
   constructor() {
@@ -108,16 +85,13 @@ export class FinanceUserAdminComponent {
     });
   }
 
-  onSearch(): void {
-    this.page.set(1);
-    this.load();
+  onSearchInput(value: string): void {
+    this.searchText.set(value);
   }
 
-  onClearSearch(): void {
-    this.searchText.set('');
-    this.page.set(1);
-    this.load();
-  }
+  onSearch(): void { this.page.set(1); this.load(); }
+
+  onClearSearch(): void { this.searchText.set(''); this.page.set(1); this.load(); }
 
   onPageChange(event: { page: number; pageSize: number }): void {
     this.page.set(event.page);
@@ -125,98 +99,131 @@ export class FinanceUserAdminComponent {
     this.load();
   }
 
-  startEdit(row: AdminRow): void {
-    this.editing.set(row);
-    this.formCid.set(row.cid);
-    this.formHospcodes.set([...row.hospcodes]);
-    this.errorMessage.set(null);
+  openCreate(): void { this.openForm(null); }
+
+  openEdit(row: FinanceAdminRow): void { this.openForm(row); }
+
+  private openForm(row: FinanceAdminRow | null): void {
+    const data: FinanceFormData = {
+      editing: row
+        ? {
+            user_id: row.user_id,
+            cid: row.cid,
+            displayName: `${this.fullName(row)} (${this.maskCid(row.cid)})`,
+            hospcodes: row.hospcodes
+          }
+        : null
+    };
+
+    this.dialogs
+      .open<FinanceFormDialogComponent, FinanceFormData, FinanceFormResult>(
+        FinanceFormDialogComponent,
+        { data, panelClass: ['w-full', 'max-w-3xl', 'px-4'] }
+      )
+      .pipe(filter((result): result is FinanceFormResult => !!result))
+      .subscribe((result) => this.afterForm(row, result));
   }
 
-  cancelEdit(): void {
-    this.editing.set(null);
-    this.formCid.set('');
-    this.formHospcodes.set([]);
-    this.errorMessage.set(null);
+  /**
+   * การบันทึกแทนที่ขอบเขตทั้งชุด ไม่ใช่การเพิ่มเข้าไป
+   * ถ้ามีหน่วยงานหายไปจึงต้องให้ยืนยันก่อน
+   */
+  private afterForm(row: FinanceAdminRow | null, result: FinanceFormResult): void {
+    if (!result.removedHospcodes.length) {
+      this.submit(row, result);
+      return;
+    }
+
+    this.dialogs
+      .confirm({
+        title: 'ยืนยันการเปลี่ยนหน่วยงาน',
+        message: row ? `${this.fullName(row)} (${this.maskCid(row.cid)})` : '',
+        consequences: [
+          `หน่วยงานที่จะถูกถอดออก ${result.removedHospcodes.length} แห่ง`,
+          `หน่วยงานหลังบันทึก ${result.hospcodes.length} แห่ง`
+        ],
+        warning: 'ขอบเขตหน่วยงานเป็นของบัญชีรวมทุกบทบาท การถอดจึงกระทบเมนูอื่นที่บัญชีนี้ใช้อยู่ด้วย',
+        confirmLabel: 'บันทึก',
+        danger: true
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => this.submit(row, result));
   }
 
-  /** ปุ่มบันทึกกดได้เมื่อ CID ครบ 13 หลักและเลือกหน่วยงานอย่างน้อยหนึ่งแห่ง */
-  readonly canSubmit = computed(() =>
-    /^\d{13}$/.test(this.formCid().trim()) && this.formHospcodes().length > 0
-  );
+  private submit(row: FinanceAdminRow | null, result: FinanceFormResult): void {
+    const payload = { cid: result.cid, hospcodes: result.hospcodes };
+    this.loading.set(true);
 
-  save(): void {
-    if (!this.canSubmit()) return;
-
-    const payload = { cid: this.formCid().trim(), hospcodes: this.formHospcodes() };
-    const target = this.editing();
-    const request$ = target
-      ? this.service.update(target.user_id, payload)
+    const request$ = row
+      ? this.service.update(row.user_id, payload)
       : this.service.create(payload);
 
-    this.loading.set(true);
     request$.subscribe({
-      next: () => {
-        this.cancelEdit();
-        this.load();
-      },
+      next: () => this.load(),
       error: (error) => {
-        this.errorMessage.set(this.toMessage(error, target ? 'แก้ไขไม่สำเร็จ' : 'บันทึกไม่สำเร็จ'));
+        this.errorMessage.set(this.toMessage(error, row ? 'แก้ไขไม่สำเร็จ' : 'บันทึกไม่สำเร็จ'));
         this.loading.set(false);
       }
     });
   }
 
-  confirmDeactivate(row: AdminRow): void {
+  confirmDeactivate(row: FinanceAdminRow): void {
     const otherRoles = row.role_codes.filter((code) => code !== FINANCE_ROLE);
 
     const consequences = [
-      `ถอดบทบาท ${FINANCE_ROLE} ออกจากบัญชีนี้`,
-      `ล้างหน่วยงานที่รับผิดชอบทั้งหมด ${row.hospcodes.length} แห่ง`
+      'ถอดบทบาทผู้ดูแลการเงินหน่วยงาน (admin_affairs) ออกจากบัญชีนี้'
     ];
 
+    // ADMIN-02: ขอบเขตจะถูกล้างเฉพาะเมื่อไม่เหลือบทบาทอื่นแล้ว
     if (otherRoles.length) {
       consequences.push(
-        `บทบาทที่เหลือ (${otherRoles.join(', ')}) ยังอยู่ แต่จะใช้งานไม่ได้เพราะไม่มีหน่วยงาน`
+        `บทบาทที่เหลือ (${otherRoles.join(', ')}) และหน่วยงานที่รับผิดชอบยังอยู่ครบ`
       );
+    } else {
+      consequences.push(`ล้างหน่วยงานที่รับผิดชอบทั้งหมด ${row.hospcodes.length} แห่ง`);
     }
 
-    const data: ConfirmDialogData = {
-      title: 'ยืนยันถอนสิทธิ์ผู้ดูแลการเงิน',
-      message: `${this.fullName(row)} (${this.maskCid(row.cid)})`,
-      consequences,
-      warning: otherRoles.length
-        ? 'ขอบเขตหน่วยงานเป็นของบัญชีรวมทุกบทบาท การถอนครั้งนี้จึงกระทบเมนูอื่นที่บัญชีนี้ใช้อยู่ด้วย'
-        : undefined,
-      confirmLabel: 'ถอนสิทธิ์',
-      danger: true
-    };
-
-    this.dialog.open(ConfirmDialogComponent, { data, width: '32rem' })
-      .afterClosed()
-      .subscribe((confirmed) => {
-        if (confirmed) this.deactivate(row);
+    this.dialogs
+      .confirm({
+        title: 'ยืนยันถอนสิทธิ์ผู้ดูแลการเงิน',
+        message: `${this.fullName(row)} (${this.maskCid(row.cid)})`,
+        consequences,
+        warning: 'token ที่บัญชีนี้ถืออยู่จะยังใช้สิทธิ์เดิมได้จนกว่าจะหมดอายุ',
+        confirmLabel: 'ถอนสิทธิ์',
+        danger: true
+      })
+      .pipe(
+        filter(Boolean),
+        switchMap(() => {
+          this.loading.set(true);
+          return this.service.deactivate(row.user_id);
+        })
+      )
+      .subscribe({
+        next: () => this.load(),
+        error: (error) => {
+          this.errorMessage.set(this.toMessage(error, 'ถอนสิทธิ์ไม่สำเร็จ'));
+          this.loading.set(false);
+        }
       });
   }
 
-  private deactivate(row: AdminRow): void {
-    this.loading.set(true);
-    this.service.deactivate(row.user_id).subscribe({
-      next: () => this.load(),
-      error: (error) => {
-        this.errorMessage.set(this.toMessage(error, 'ถอนสิทธิ์ไม่สำเร็จ'));
-        this.loading.set(false);
-      }
-    });
+  /**
+   * แสดงชื่อหน่วยงานพร้อม hcode9 ตามมาตรฐานใหม่
+   * ถ้าทะเบียนกลางไม่มีรหัสนั้น จะเหลือแค่รหัสเดิมที่บันทึกไว้
+   */
+  officeLabel(row: FinanceAdminRow): string {
+    const offices = row.offices ?? [];
+    if (!offices.length) {
+      return row.hospcodes.length ? row.hospcodes.join(', ') : 'ไม่มี';
+    }
+
+    return offices
+      .map((office) => (office.name ? `${office.name} (${office.hcode9})` : office.code5))
+      .join(', ');
   }
 
-  /** ใช้เฉพาะกรณี Scope ALL ที่ต้องพิมพ์รหัสหน่วยงานเอง */
-  onHospcodesText(value: string): void {
-    this.formHospcodes.set(
-      value.split(',').map((code) => code.trim()).filter(Boolean)
-    );
-  }
-
-  fullName(row: AdminRow): string {
+  fullName(row: FinanceAdminRow): string {
     const name = `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim();
     return name || '(ยังไม่มีชื่อในระบบ)';
   }
