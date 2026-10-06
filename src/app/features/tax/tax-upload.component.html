@@ -1,0 +1,246 @@
+<div class="grid gap-4">
+  @if (blockedBecauseOtherOffice()) {
+    <p class="m-0 rounded-lg bg-(--surface-2) px-4 py-3 leading-relaxed text-(--muted)" role="status">
+      ปีนี้เป็นของหน่วยงาน
+      <span class="font-mono text-(--text)">{{ store.year()?.hospcode }}</span>
+      ซึ่งอยู่นอกหน่วยงานที่คุณดูแล <strong class="text-(--text)">อัปโหลดเข้าปีนี้ไม่ได้</strong>
+      ดูและเปิดไฟล์ได้ที่แท็บ "ไฟล์ในปีนี้"
+    </p>
+  }
+
+  @if (canUpload()) {
+  @if (uploadResult(); as result) {
+    <div class="grid gap-3 rounded-xl border-2 border-brand-700 bg-brand-50 p-5" role="status">
+      <p class="m-0 text-base font-semibold text-brand-800">
+        บันทึกแล้ว <span class="tabular-nums">{{ result.count }}</span> รายการ
+        <span class="font-normal">
+          ({{ result.mode === 'batch' ? 'อัปโหลดแบบเป็นชุด' : 'อัปโหลดรายบุคคล' }})
+        </span>
+      </p>
+      <p class="m-0 leading-relaxed text-(--muted)">
+        ไฟล์เข้าไปอยู่ในปี <span class="tabular-nums">{{ yearBe() }}</span> แล้ว
+        อัปโหลดชุดถัดไปได้ทันทีจากหน้านี้
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-base btn-sm btn-ghost text-(--muted)" (click)="dismissResult()">
+          ปิดข้อความนี้
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  <!-- ── ขั้นที่ 1 เลือกวิธี ── -->
+  <div class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div>
+      <h2 class="m-0 text-lg font-semibold">
+        <span class="text-(--muted)">ขั้นที่ 1</span> · เลือกวิธีอัปโหลด
+      </h2>
+    </div>
+
+    <div class="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="วิธีอัปโหลด">
+      <button type="button"
+              role="radio"
+              [attr.aria-checked]="mode() === 'batch'"
+              class="grid gap-1 rounded-lg border-2 p-4 text-start transition-colors"
+              [style.borderColor]="mode() === 'batch' ? 'var(--brand)' : 'var(--line)'"
+              [class.bg-brand-50]="mode() === 'batch'"
+              [disabled]="busy()"
+              (click)="setMode('batch')">
+        <span class="font-semibold">แบบเป็นชุด</span>
+        <span class="text-sm leading-relaxed text-(--muted)">
+          PDF รวมหนึ่งไฟล์ คู่กับ TXT ที่ระบุเลขบัตรทีละบรรทัด ระบบตัดเป็นไฟล์รายคนให้เอง
+        </span>
+      </button>
+
+      <button type="button"
+              role="radio"
+              [attr.aria-checked]="mode() === 'individual'"
+              class="grid gap-1 rounded-lg border-2 p-4 text-start transition-colors"
+              [style.borderColor]="mode() === 'individual' ? 'var(--brand)' : 'var(--line)'"
+              [class.bg-brand-50]="mode() === 'individual'"
+              [disabled]="busy()"
+              (click)="setMode('individual')">
+        <span class="font-semibold">รายบุคคล</span>
+        <span class="text-sm leading-relaxed text-(--muted)">
+          จับคู่เลขบัตรกับไฟล์ทีละคน ไฟล์ของแต่ละคนต้องมี 1 หน้าเท่านั้น
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── ขั้นที่ 2 เลือกไฟล์ ── -->
+  <div class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div>
+      <h2 class="m-0 text-lg font-semibold">
+        <span class="text-(--muted)">ขั้นที่ 2</span> ·
+        {{ mode() === 'batch' ? 'เลือกไฟล์ PDF และ TXT' : 'กรอกเลขบัตรและเลือกไฟล์' }}
+      </h2>
+      <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+        ไฟล์ที่บันทึกจะได้ชื่อตามรูปแบบ
+        <span class="font-mono">{{ yearShortLabel() }}_เลขบัตร_ลำดับ.pdf</span>
+      </p>
+    </div>
+
+    @if (mode() === 'batch') {
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-1">
+          <label for="batch-pdf" class="text-sm font-medium">ไฟล์ PDF ต้นฉบับ</label>
+          <input id="batch-pdf"
+                 #batchPdfInput
+                 type="file"
+                 accept=".pdf,application/pdf"
+                 class="field-base py-1.5"
+                 (change)="onBatchPdfChange($event)" />
+          @if (batchPdfFile()) {
+            <p class="m-0 text-sm text-(--muted)">{{ batchPdfFile()?.name }}</p>
+          }
+        </div>
+
+        <div class="grid gap-1">
+          <label for="batch-txt" class="text-sm font-medium">ไฟล์ TXT จับคู่เลขบัตร</label>
+          <input id="batch-txt"
+                 #batchTxtInput
+                 type="file"
+                 accept=".txt,text/plain"
+                 class="field-base py-1.5"
+                 (change)="onBatchTxtChange($event)" />
+          @if (batchTxtFile()) {
+            <p class="m-0 text-sm text-(--muted)">{{ batchTxtFile()?.name }}</p>
+          }
+        </div>
+      </div>
+
+      <button type="button"
+              class="btn-base btn-primary justify-self-start"
+              [disabled]="busy() || !batchReady()"
+              (click)="previewBatch()">
+        {{ previewLoading() ? 'กำลังตรวจสอบ...' : 'ตรวจสอบก่อนบันทึก' }}
+      </button>
+
+      @if (!batchReady()) {
+        <p class="m-0 text-sm text-(--muted)">ต้องเลือกทั้งไฟล์ PDF และไฟล์ TXT ก่อนจึงจะตรวจสอบได้</p>
+      }
+    } @else {
+      <div class="grid gap-3">
+        @for (row of individualRows(); track row.id; let i = $index) {
+          <div class="flex flex-wrap items-center gap-2">
+            <input maxlength="13"
+                   inputmode="numeric"
+                   class="field-base w-44 font-mono tabular-nums"
+                   placeholder="เลขบัตร 13 หลัก"
+                   [attr.aria-label]="'เลขบัตรประชาชนแถวที่ ' + (i + 1)"
+                   [value]="row.cid"
+                   (input)="onIndividualCidInput(i, $any($event.target).value)" />
+            <input type="file"
+                   accept=".pdf,application/pdf"
+                   class="field-base min-w-0 flex-1 py-1.5"
+                   [attr.aria-label]="'ไฟล์ PDF แถวที่ ' + (i + 1)"
+                   (change)="onIndividualFileChange($event, i)" />
+            <button type="button"
+                    class="btn-base btn-sm btn-ghost text-(--danger)"
+                    [disabled]="individualRows().length === 1"
+                    (click)="removeIndividualRow(i)">ลบแถว</button>
+          </div>
+        }
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-base btn-sm btn-outline" (click)="addIndividualRow()">+ เพิ่มแถว</button>
+        <button type="button"
+                class="btn-base btn-primary"
+                [disabled]="busy() || individualFilledCount() === 0"
+                (click)="previewIndividual()">
+          {{ previewLoading() ? 'กำลังตรวจสอบ...' : 'ตรวจสอบก่อนบันทึก' }}
+        </button>
+      </div>
+
+      @if (individualFilledCount() === 0) {
+        <p class="m-0 text-sm text-(--muted)">กรอกเลขบัตรและเลือกไฟล์อย่างน้อยหนึ่งแถวก่อนจึงจะตรวจสอบได้</p>
+      }
+    }
+  </div>
+
+  <!-- ── ขั้นที่ 3 ตรวจตัวอย่างแล้วยืนยัน ── -->
+  @if (previewMode(); as preview) {
+    <div class="grid gap-4 rounded-xl border-2 border-brand-700 bg-brand-50/40 p-5">
+      <div>
+        <h2 class="m-0 text-lg font-semibold">
+          <span class="text-(--muted)">ขั้นที่ 3</span> · ตรวจตัวอย่างแล้วยืนยัน
+        </h2>
+        <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+          <strong class="text-(--text)">ยังไม่มีอะไรถูกบันทึก</strong>
+          ตรวจชื่อไฟล์และเปิดดู PDF ให้ครบก่อนกดยืนยัน
+        </p>
+      </div>
+
+      @if (preview === 'batch') {
+        <dl class="m-0 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">จำนวนหน้า PDF</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ batchPreviewPageCount() }}</dd>
+          </div>
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">จำนวนบรรทัด TXT</dt>
+            <dd class="m-0 font-medium tabular-nums">{{ batchPreviewLineCount() }}</dd>
+          </div>
+          <div class="flex gap-1">
+            <dt class="text-(--muted)">ตัวคั่น</dt>
+            <dd class="m-0 font-mono font-medium">{{ batchPreviewDelimiter() }}</dd>
+          </div>
+        </dl>
+
+        <app-table
+          [columns]="batchPreviewColumns"
+          [rows]="pagedBatchPreview()"
+          [total]="batchPreviewTotal()"
+          [page]="batchPreviewPage()"
+          [pageSize]="batchPreviewPageSize()"
+          emptyMessage="ไม่มีรายการ"
+          (pageChange)="onBatchPreviewPageChange($event)">
+          <ng-template #rowActions let-item>
+            <div class="flex justify-end">
+              <button type="button" class="btn-base btn-sm btn-outline"
+                      (click)="openBatchSplitPreview(item)">ดู PDF ที่ตัดแล้ว</button>
+            </div>
+          </ng-template>
+        </app-table>
+      } @else {
+        <app-table
+          [columns]="individualPreviewColumns"
+          [rows]="pagedIndividualPreview()"
+          [total]="individualPreviewTotal()"
+          [page]="individualPreviewPage()"
+          [pageSize]="individualPreviewPageSize()"
+          emptyMessage="ไม่มีรายการ"
+          (pageChange)="onIndividualPreviewPageChange($event)">
+          <ng-template #rowActions let-item>
+            <div class="flex justify-end">
+              <button type="button" class="btn-base btn-sm btn-outline"
+                      (click)="openIndividualPreview(item)">ดู PDF</button>
+            </div>
+          </ng-template>
+        </app-table>
+      }
+
+      <div class="flex flex-wrap gap-2">
+        <button type="button"
+                class="btn-base btn-primary"
+                [disabled]="confirming()"
+                (click)="confirmUpload()">
+          {{ confirming() ? 'กำลังบันทึก...' : 'ยืนยันบันทึกจริง' }}
+        </button>
+        <button type="button"
+                class="btn-base btn-ghost"
+                [disabled]="confirming()"
+                (click)="cancelPreview()">ยกเลิก</button>
+      </div>
+    </div>
+  }
+  }
+</div>

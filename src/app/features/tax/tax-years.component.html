@@ -1,0 +1,240 @@
+<section class="grid gap-5">
+  <header class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="m-0 mb-1 text-2xl font-bold">ใบรับรองภาษี</h1>
+      <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+        เลือกปีภาษีที่ต้องการทำงานด้วย แล้วจัดการไฟล์ของปีนั้นในหน้าถัดไป
+      </p>
+    </div>
+
+    @if (canManage()) {
+      <button type="button" class="btn-base btn-primary" (click)="toggleForm()">
+        {{ formOpen() ? 'ปิดฟอร์ม' : 'เพิ่มปีภาษี' }}
+      </button>
+    }
+  </header>
+
+  @if (!canManage()) {
+    <p class="m-0 rounded-lg bg-(--surface-2) px-4 py-3 leading-relaxed text-(--muted)">
+      บัญชีนี้เป็นโหมดอ่านอย่างเดียว เพิ่มหรือลบไฟล์ไม่ได้ (ต้องมีสิทธิ์ payroll.export)
+    </p>
+  }
+
+  @if (errorMessage()) {
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (successMessage()) {
+    <p class="m-0 rounded-lg bg-brand-50 px-4 py-3 leading-relaxed text-brand-800" role="status">
+      {{ successMessage() }}
+    </p>
+  }
+
+  @if (canManage() && formOpen()) {
+    <div class="grid gap-4 rounded-xl border-2 border-brand-700 bg-brand-50/40 p-5">
+      <div>
+        <h2 class="m-0 text-lg font-semibold">เพิ่มปีภาษี</h2>
+        <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+          หนึ่งปีภาษีผูกกับหนึ่งหน่วยงาน ไฟล์ทั้งหมดของปีจะถูกเก็บไว้ใต้ปีนี้
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="grid gap-1">
+          <label for="year-be" class="text-sm font-medium">ปี พ.ศ.</label>
+          <input id="year-be"
+                 type="number"
+                 inputmode="numeric"
+                 class="field-base w-32 tabular-nums"
+                 placeholder="2568 หรือ 68"
+                 [value]="formYearBe()"
+                 (input)="onFormYearBeInput($any($event.target).value)" />
+          <p class="m-0 text-sm text-(--muted)">
+            @if (formYearPreview()) {
+              จะได้ปี <strong class="text-(--text) tabular-nums">{{ formYearPreview() }}</strong>
+            } @else {
+              พิมพ์สองหลักก็ได้
+            }
+          </p>
+        </div>
+
+        @if (requiresHospcodeInput()) {
+          <div class="grid gap-1">
+            <label for="year-hospcode" class="text-sm font-medium">รหัสหน่วยงาน</label>
+            <input id="year-hospcode"
+                   maxlength="10"
+                   class="field-base w-44 font-mono"
+                   placeholder="เช่น 41124"
+                   [value]="formHospcode()"
+                   (input)="onFormHospcodeInput($any($event.target).value)" />
+            <p class="m-0 text-sm text-(--muted)">ใส่รหัส 5 หลัก หรือ hcode9 ก็ได้</p>
+          </div>
+        }
+
+        <button type="button"
+                class="btn-base btn-primary"
+                [disabled]="creating()"
+                (click)="createYear()">
+          {{ creating() ? 'กำลังบันทึก...' : 'บันทึกปีภาษี' }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ─────────── ค้นหาไฟล์ข้ามปี ─────────── -->
+  <div class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div>
+      <h2 class="m-0 text-lg font-semibold">ค้นหาไฟล์</h2>
+      <p class="m-0 mt-1 leading-relaxed text-(--muted)">
+        ค้นด้วยเลขบัตรประชาชนหรือชื่อไฟล์ ได้ทุกปีและทุกหน่วยงานที่คุณดูแล ไม่ต้องเปิดปีก่อน
+        ถ้าจะหาตามหน่วยงานให้ใช้ช่อง <strong class="text-(--text)">หน่วยงาน</strong> ไม่ใช่ช่องคำค้น
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-end gap-2">
+      <div class="grid flex-1 gap-1 sm:max-w-80">
+        <label for="file-search" class="text-sm font-medium">เลขบัตรประชาชน หรือชื่อไฟล์</label>
+        <input id="file-search"
+               type="search"
+               class="field-base"
+               placeholder="เช่น 1234567890123"
+               [value]="fileSearchText()"
+               (input)="onFileSearchInput($any($event.target).value)"
+               (keyup.enter)="onFileSearch()" />
+      </div>
+
+      @if (showFileHospcodeFilter()) {
+        <div class="grid gap-1">
+          <label for="file-search-hospcode" class="text-sm font-medium">หน่วยงาน</label>
+          <input id="file-search-hospcode"
+                 maxlength="10"
+                 class="field-base w-36 font-mono"
+                 placeholder="เช่น 41124"
+                 [value]="fileSearchHospcode()"
+                 (input)="onFileSearchHospcodeInput($any($event.target).value)"
+                 (keyup.enter)="onFileSearch()" />
+        </div>
+      }
+
+      <div class="grid gap-1">
+        <label for="file-search-year" class="text-sm font-medium">ปี พ.ศ.</label>
+        <select id="file-search-year"
+                class="field-base w-36 tabular-nums"
+                (change)="onFileSearchYearChange($any($event.target).value)">
+          <option value="" [selected]="fileSearchYear() === null">ทุกปี</option>
+          @for (year of yearOptions(); track year) {
+            <option [value]="year" [selected]="fileSearchYear() === year">{{ year }}</option>
+          }
+        </select>
+      </div>
+
+      <button type="button"
+              class="btn-base btn-primary"
+              [disabled]="fileLoading() || !fileSearchReady()"
+              (click)="onFileSearch()">
+        {{ fileLoading() ? 'กำลังค้นหา...' : 'ค้นหา' }}
+      </button>
+
+      @if (fileSearched() || fileSearchReady()) {
+        <button type="button" class="btn-base btn-ghost text-(--muted)" (click)="onClearFileSearch()">ล้าง</button>
+      }
+    </div>
+
+    @if (!fileSearchReady()) {
+      <p class="m-0 text-sm text-(--muted)">ใส่คำค้น เลือกปี หรือระบุหน่วยงาน อย่างน้อยหนึ่งอย่างก่อนจึงจะค้นได้</p>
+    }
+
+    @if (fileError()) {
+      <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+        {{ fileError() }}
+      </p>
+    }
+
+    @if (fileSearched()) {
+      <p class="m-0 text-sm leading-relaxed text-(--muted)">
+        พบ <strong class="text-(--text) tabular-nums">{{ fileTotal() }}</strong> ไฟล์
+      </p>
+
+      <app-table
+        [columns]="fileColumns"
+        [rows]="fileRows()"
+        [total]="fileTotal()"
+        [page]="filePage()"
+        [pageSize]="filePageSize()"
+        [loading]="fileLoading()"
+        emptyMessage="ไม่พบไฟล์ตามเงื่อนไขที่ค้นหา"
+        (pageChange)="onFilePageChange($event)">
+
+        <ng-template #rowActions let-row>
+          <div class="flex justify-end gap-1">
+            <button type="button" class="btn-base btn-sm btn-outline" (click)="openFile(row)">เปิดไฟล์</button>
+            <button type="button" class="btn-base btn-sm btn-ghost" (click)="openYearOfRow(row)">ไปที่ปีนี้</button>
+            @if (canWrite(row.hospcode)) {
+              <button type="button" class="btn-base btn-sm btn-danger" (click)="deleteFile(row)">ลบ</button>
+            }
+          </div>
+        </ng-template>
+      </app-table>
+    }
+  </div>
+
+  <!-- ─────────── ปีภาษี ─────────── -->
+  <div class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <h2 class="m-0 text-lg font-semibold">ปีภาษี</h2>
+    <div class="flex flex-wrap items-end gap-2">
+      <div class="grid gap-1 w-full sm:w-64">
+        <label for="year-search" class="text-sm font-medium">รหัสหน่วยงาน</label>
+        <input id="year-search"
+               type="search"
+               maxlength="10"
+               class="field-base font-mono"
+               placeholder="เช่น 41124"
+               [value]="searchText()"
+               (input)="onSearchInput($any($event.target).value)"
+               (keyup.enter)="onSearch()" />
+      </div>
+
+      <div class="grid gap-1">
+        <label for="year-table-filter" class="text-sm font-medium">ปี พ.ศ.</label>
+        <select id="year-table-filter"
+                class="field-base w-36 tabular-nums"
+                (change)="onYearFilterChange($any($event.target).value)">
+          <option value="" [selected]="yearFilter() === null">ทุกปี</option>
+          @for (year of yearOptions(); track year) {
+            <option [value]="year" [selected]="yearFilter() === year">{{ year }}</option>
+          }
+        </select>
+      </div>
+
+      <button type="button" class="btn-base btn-primary" (click)="onSearch()">ค้นหา</button>
+      @if (hasSearch() || yearFilter() !== null) {
+        <button type="button" class="btn-base btn-ghost text-(--muted)" (click)="onClearSearch()">ล้าง</button>
+      }
+    </div>
+
+    <app-table
+      [columns]="columns"
+      [rows]="pagedYears()"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [loading]="loading()"
+      emptyMessage="ยังไม่มีปีภาษีในหน่วยงานที่คุณดูแล"
+      (pageChange)="onPageChange($event)">
+
+      <ng-template #rowActions let-year>
+        <div class="flex justify-end gap-1">
+          <button type="button" class="btn-base btn-sm btn-primary" (click)="openYear(year)">
+            จัดการไฟล์
+          </button>
+          @if (canWrite(year.hospcode)) {
+            <button type="button" class="btn-base btn-sm btn-outline" (click)="openUpload(year)">อัปโหลด</button>
+            <button type="button" class="btn-base btn-sm btn-danger" (click)="deleteYear(year)">ลบ</button>
+          }
+        </div>
+      </ng-template>
+    </app-table>
+  </div>
+</section>

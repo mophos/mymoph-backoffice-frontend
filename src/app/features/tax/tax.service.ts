@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpParams, HttpResponse } from '@angular/common/http';
+import { Observable, catchError, from, switchMap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../../core/services/api.config';
 import { ApiEnvelope } from '../../core/models/auth.models';
 
@@ -27,6 +27,30 @@ export interface TaxDocumentRow {
   updated_at: string;
 }
 
+/** แถวผลค้นหาข้ามปี ต้องมีปีกับหน่วยงานกำกับ ไม่งั้นดูไม่ออกว่ามาจากไหน */
+export interface TaxSearchRow {
+  id: string;
+  taxYearId: number;
+  yearBe: number;
+  yearShort: string;
+  /** ปีที่เอกสารบันทึกไว้เอง ต่างจาก yearBe ได้ถ้าข้อมูลเก่าไม่สอดคล้อง */
+  documentYearBe: number;
+  hospcode: string;
+  cid: string;
+  fileNo: number;
+  fileName: string;
+  originalFileName: string | null;
+  sourceType: string;
+  updatedAt: string;
+}
+
+interface SearchDocumentsData {
+  total: number;
+  page: number;
+  pageSize: number;
+  rows: TaxSearchRow[];
+}
+
 interface ListDocumentsData {
   year: {
     id: number;
@@ -38,26 +62,6 @@ interface ListDocumentsData {
   page: number;
   pageSize: number;
   rows: TaxDocumentRow[];
-}
-
-export interface YearlyOverviewRow {
-  cid: string;
-  totalFiles: number;
-  hospcodeCount: number;
-  hospcodes: string;
-  updatedAt: string;
-}
-
-interface ListYearlyOverviewData {
-  year: {
-    id: number;
-    yearBe: number;
-    yearShort: string;
-  };
-  total: number;
-  page: number;
-  pageSize: number;
-  rows: YearlyOverviewRow[];
 }
 
 export interface CreateTaxYearData {
@@ -83,6 +87,19 @@ export interface BatchUploadPreviewRow {
 }
 
 @Injectable({ providedIn: 'root' })
+/*
+ * endpoint ที่ backend มีแต่ฝั่งหน้าเว็บไม่เรียก จึงไม่ประกาศเมธอดไว้ที่นี่
+ *
+ *   PUT /tax/years/:id · PUT /tax/documents/:id
+ *     ตอบ 403 TAX_*_EDIT_DISABLED อยู่แล้ว ข้อกำหนดคือไฟล์ที่บันทึกแล้วแก้ไขไม่ได้
+ *     ต้องลบแล้วอัปโหลดใหม่เพื่อให้มีร่องรอยการลบทุกครั้ง
+ *
+ *   GET /tax/years/:id/yearly-overview
+ *     สรุปรายคนทั้งปี เคยมีหน้า /tax-overview เรียกใช้ ถอดออก 5 ต.ค. 2569
+ *     เพราะมีผู้ใช้จริงเรียกครั้งเดียวในประวัติ และข้อมูลที่มันตอบได้
+ *     (คนที่มีไฟล์ข้ามหน่วยงาน) เป็น 0.33% ของทั้งหมด
+ *     endpoint ยังอยู่และยังบังคับ scope ตาม TAX-03/D-20
+ */
 export class TaxService {
   constructor(private readonly http: HttpClient) {}
 
@@ -100,12 +117,6 @@ export class TaxService {
 
   createYear(payload: { yearBe: number; hospcode?: string }): Observable<ApiEnvelope<CreateTaxYearData>> {
     return this.http.post<ApiEnvelope<CreateTaxYearData>>(`${API_BASE_URL}/tax/years`, payload, {
-      withCredentials: true
-    });
-  }
-
-  updateYear(id: number, payload: { yearBe: number; hospcode?: string }): Observable<ApiEnvelope<unknown>> {
-    return this.http.put<ApiEnvelope<unknown>>(`${API_BASE_URL}/tax/years/${id}`, payload, {
       withCredentials: true
     });
   }
@@ -134,25 +145,29 @@ export class TaxService {
     });
   }
 
-  listYearlyOverview(params: {
-    yearId: number;
+  /**
+   * ค้นไฟล์ข้ามปีและข้ามหน่วยงาน
+   *
+   * ต่างจาก listDocuments ที่ล็อกอยู่ปีเดียว ใช้ตอนรู้เลขบัตรแต่ไม่รู้ว่าอยู่ปีไหน
+   * backend บังคับให้มีเงื่อนไขอย่างน้อยหนึ่งอย่าง ไม่งั้นตอบ SEARCH_CRITERIA_REQUIRED
+   */
+  searchDocuments(params: {
     search?: string;
+    yearBe?: number;
+    hospcode?: string;
     page: number;
     pageSize: number;
-  }): Observable<ApiEnvelope<ListYearlyOverviewData>> {
+  }): Observable<ApiEnvelope<SearchDocumentsData>> {
     let httpParams = new HttpParams().set('page', params.page).set('pageSize', params.pageSize);
 
-    if (params.search) {
-      httpParams = httpParams.set('search', params.search);
-    }
+    if (params.search) httpParams = httpParams.set('search', params.search);
+    if (params.yearBe !== undefined) httpParams = httpParams.set('yearBe', params.yearBe);
+    if (params.hospcode) httpParams = httpParams.set('hospcode', params.hospcode);
 
-    return this.http.get<ApiEnvelope<ListYearlyOverviewData>>(
-      `${API_BASE_URL}/tax/years/${params.yearId}/yearly-overview`,
-      {
-        params: httpParams,
-        withCredentials: true
-      }
-    );
+    return this.http.get<ApiEnvelope<SearchDocumentsData>>(`${API_BASE_URL}/tax/documents`, {
+      params: httpParams,
+      withCredentials: true
+    });
   }
 
   uploadIndividual(yearId: number, items: Array<{ cid: string; file: File }>): Observable<ApiEnvelope<{ createdCount: number }>> {
@@ -218,26 +233,53 @@ export class TaxService {
     );
   }
 
+  /**
+   * โหลดไฟล์มาเปิดในแท็บใหม่
+   *
+   * ต้องใช้ responseType blob เพราะ backend ส่งไฟล์มา แต่ผลข้างเคียงคือ
+   * **ตอนเกิด error body ก็มาเป็น Blob ด้วย** ไม่ใช่ JSON ที่อ่านรหัสได้
+   * ผลคือหน้าเว็บเคยขึ้นข้อความดิบของ Angular ว่า
+   * "Http failure response for ...: 404 Not Found" แทนข้อความไทย
+   *
+   * จึงแปลง Blob เป็น JSON ให้เสร็จที่นี่ ผู้เรียกทุกรายจะได้ error
+   * รูปแบบเดียวกับ endpoint อื่นและแปลเป็นข้อความไทยได้ตามปกติ
+   */
   downloadDocument(id: string): Observable<HttpResponse<Blob>> {
-    return this.http.get(`${API_BASE_URL}/tax/documents/${id}/download`, {
-      withCredentials: true,
-      responseType: 'blob',
-      observe: 'response'
-    });
+    return this.http
+      .get(`${API_BASE_URL}/tax/documents/${id}/download`, {
+        withCredentials: true,
+        responseType: 'blob',
+        observe: 'response'
+      })
+      .pipe(catchError((error: HttpErrorResponse) => this.rethrowWithReadableBody(error)));
   }
 
-  updateDocument(id: string, payload: { cid?: string; file?: File }): Observable<ApiEnvelope<unknown>> {
-    const formData = new FormData();
-    if (payload.cid) {
-      formData.append('cid', payload.cid);
-    }
-    if (payload.file) {
-      formData.append('file', payload.file, payload.file.name);
+  private rethrowWithReadableBody(error: HttpErrorResponse): Observable<never> {
+    if (!(error.error instanceof Blob)) {
+      return throwError(() => error);
     }
 
-    return this.http.put<ApiEnvelope<unknown>>(`${API_BASE_URL}/tax/documents/${id}`, formData, {
-      withCredentials: true
-    });
+    return from(error.error.text()).pipe(
+      switchMap((text) => {
+        let body: unknown = text;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          // ไม่ใช่ JSON ก็ส่งข้อความดิบไป ดีกว่าทิ้งทั้งก้อน
+        }
+
+        return throwError(
+          () =>
+            new HttpErrorResponse({
+              error: body,
+              headers: error.headers,
+              status: error.status,
+              statusText: error.statusText,
+              url: error.url ?? undefined
+            })
+        );
+      })
+    );
   }
 
   deleteDocument(id: string): Observable<ApiEnvelope<unknown>> {

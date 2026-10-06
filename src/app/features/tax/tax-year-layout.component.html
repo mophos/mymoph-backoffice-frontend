@@ -1,0 +1,77 @@
+<section class="grid gap-5">
+  <header class="grid gap-3">
+    <a routerLink="/tax" class="justify-self-start text-sm font-medium text-brand-800 hover:underline">
+      ← กลับไปเลือกปีภาษี
+    </a>
+
+    @if (store.notFound()) {
+      <div>
+        <h1 class="m-0 mb-1 text-2xl font-bold">ไม่พบปีภาษีนี้</h1>
+        <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+          ปีที่อยู่ในลิงก์อาจถูกลบไปแล้ว หรืออยู่นอกหน่วยงานที่บัญชีนี้ดูแล
+        </p>
+      </div>
+    } @else {
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="m-0 mb-1 text-2xl font-bold">
+            ใบรับรองภาษี ปี
+            <span class="tabular-nums">{{ store.year()?.yearBe ?? '…' }}</span>
+          </h1>
+          <p class="m-0 max-w-3xl leading-relaxed text-(--muted)">
+            หน่วยงาน <span class="font-mono text-(--text)">{{ store.year()?.hospcode ?? '…' }}</span>
+            · เก็บไฟล์ไว้
+            <span class="tabular-nums text-(--text)">{{ store.year()?.documentCount ?? 0 }}</span> รายการ
+            · ชื่อไฟล์มาตรฐาน
+            <span class="font-mono">{{ store.yearShortLabel() }}_เลขบัตร_ลำดับ.pdf</span>
+          </p>
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (store.errorMessage()) {
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+      {{ store.errorMessage() }}
+    </p>
+  }
+
+  @if (!store.notFound()) {
+    <nav class="flex flex-wrap gap-2 border-b border-(--line) pb-3" aria-label="งานในปีภาษีนี้">
+      <!--
+        ต้องสลับคลาสทีเดียวหนึ่งตัว ไม่ใช่ให้ routerLinkActive เติม btn-primary ทับ btn-ghost
+        เพราะ btn-ghost มีกฎ hover ที่อยู่หลัง btn-primary ใน CSS ที่ build ออกมา
+        แท็บที่เปิดอยู่จะกลายเป็นตัวอักษรขาวบนพื้นสีอ่อนเมื่อเอาเมาส์ชี้
+      -->
+      <a routerLink="documents"
+         routerLinkActive
+         #documentsLink="routerLinkActive"
+         [routerLinkActiveOptions]="{ exact: true }"
+         ariaCurrentWhenActive="page"
+         class="btn-base"
+         [class.btn-primary]="documentsLink.isActive"
+         [class.btn-ghost]="!documentsLink.isActive">ไฟล์ในปีนี้</a>
+
+      @if (canUpload()) {
+        <a routerLink="upload"
+           routerLinkActive
+           #uploadLink="routerLinkActive"
+           [routerLinkActiveOptions]="{ exact: true }"
+           ariaCurrentWhenActive="page"
+           class="btn-base"
+           [class.btn-primary]="uploadLink.isActive"
+           [class.btn-ghost]="!uploadLink.isActive">อัปโหลดไฟล์</a>
+      }
+    </nav>
+
+    @if (store.readOnlyBecauseOtherOffice()) {
+      <p class="m-0 rounded-lg bg-(--surface-2) px-4 py-3 leading-relaxed text-(--muted)">
+        ปีนี้เป็นของหน่วยงาน
+        <span class="font-mono text-(--text)">{{ store.year()?.hospcode }}</span>
+        ซึ่งอยู่นอกหน่วยงานที่คุณดูแล <strong class="text-(--text)">ดูและเปิดไฟล์ได้ แต่อัปโหลดและลบไม่ได้</strong>
+      </p>
+    }
+
+    <router-outlet />
+  }
+</section>

@@ -1,0 +1,66 @@
+<div class="grid gap-4">
+  @if (errorMessage()) {
+    <p class="m-0 rounded-lg bg-red-50 px-4 py-3 leading-relaxed text-(--danger)" role="alert">
+      {{ errorMessage() }}
+    </p>
+  }
+
+  @if (successMessage()) {
+    <p class="m-0 rounded-lg bg-brand-50 px-4 py-3 leading-relaxed text-brand-800" role="status">
+      {{ successMessage() }}
+    </p>
+  }
+
+  <div class="grid gap-4 rounded-xl border border-(--line) bg-(--surface) p-5">
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="w-full sm:w-80">
+        <label for="doc-search" class="sr-only">ค้นหาไฟล์</label>
+        <input id="doc-search"
+               type="search"
+               class="field-base"
+               placeholder="ค้นด้วยเลขบัตรประชาชน หรือชื่อไฟล์"
+               [value]="searchText()"
+               (input)="onSearchInput($any($event.target).value)"
+               (keyup.enter)="onSearch()" />
+      </div>
+      <button type="button" class="btn-base btn-primary" (click)="onSearch()">ค้นหา</button>
+      @if (hasSearch()) {
+        <button type="button" class="btn-base btn-ghost text-(--muted)" (click)="onClearSearch()">ล้าง</button>
+      }
+    </div>
+
+    @if (suggestSearch()) {
+      <p class="m-0 text-sm leading-relaxed text-(--muted)">
+        ปีนี้มี <span class="tabular-nums">{{ total() }}</span> ไฟล์
+        การค้นด้วยเลขบัตรประชาชนจะเร็วกว่าการไล่ทีละหน้า
+      </p>
+    }
+
+    @if (canManage()) {
+      <p class="m-0 text-sm leading-relaxed text-(--muted)">
+        ไฟล์ที่บันทึกแล้วแก้ไขไม่ได้ ถ้าไฟล์หรือเลขบัตรผิดให้ลบรายการนั้นแล้วอัปโหลดใหม่
+        ระบบจะให้ชื่อไฟล์ลำดับเดิมกลับมา และเก็บบันทึกการลบไว้ทุกครั้ง
+      </p>
+    }
+
+    <app-table
+      [columns]="columns"
+      [rows]="rows()"
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      [loading]="loading()"
+      emptyMessage="ยังไม่มีไฟล์ในปีนี้"
+      (pageChange)="onPageChange($event)">
+
+      <ng-template #rowActions let-row>
+        <div class="flex justify-end gap-1">
+          <button type="button" class="btn-base btn-sm btn-outline" (click)="openDocument(row)">เปิดไฟล์</button>
+          @if (canManage()) {
+            <button type="button" class="btn-base btn-sm btn-danger" (click)="deleteDocument(row)">ลบ</button>
+          }
+        </div>
+      </ng-template>
+    </app-table>
+  </div>
+</div>

@@ -12,7 +12,11 @@ import { NotFoundComponent } from './features/shared/not-found.component';
 import { AttendanceComponent } from './features/attendance/attendance.component';
 import { PersonnelComponent } from './features/personnel/personnel.component';
 import { PayrollPlaceholderComponent } from './features/payroll/payroll-placeholder.component';
-import { TaxManagementComponent } from './features/tax/tax-management.component';
+import { TaxYearsComponent } from './features/tax/tax-years.component';
+import { TaxYearLayoutComponent } from './features/tax/tax-year-layout.component';
+import { TaxDocumentsComponent } from './features/tax/tax-documents.component';
+import { TaxUploadComponent } from './features/tax/tax-upload.component';
+import { TaxYearStore } from './features/tax/tax-year.store';
 import { OfficeSettingsV2Component } from './features/office-settings-v2/office-settings.component';
 import { MymophUsersComponent } from './features/mymoph-users/mymoph-users.component';
 import { FinanceUserAdminComponent } from './features/user-admin/finance-user-admin.component';
@@ -80,11 +84,33 @@ export const appRoutes: Routes = [
         canActivate: [permissionGuard],
         data: { permission: 'payroll.read' }
       },
+      /*
+       * โมดูลภาษีแยกเป็นหน้าละงาน การเลือกปีจึงเปลี่ยน URL ไม่ใช่เปลี่ยนแท็บ
+       * TaxYearStore ประกาศที่ระดับ route ของ :yearId เพื่อให้หน้าแม่กับหน้าลูก
+       * ใช้ปีเดียวกันโดยไม่ต้องยิง API ซ้ำ
+       */
       {
         path: 'tax',
-        component: TaxManagementComponent,
         canActivate: [permissionGuard],
-        data: { permission: 'payroll.read' }
+        data: { permission: 'payroll.read' },
+        children: [
+          { path: '', component: TaxYearsComponent, pathMatch: 'full' },
+          {
+            path: ':yearId',
+            component: TaxYearLayoutComponent,
+            providers: [TaxYearStore],
+            children: [
+              { path: 'documents', component: TaxDocumentsComponent },
+              {
+                path: 'upload',
+                component: TaxUploadComponent,
+                canActivate: [permissionGuard],
+                data: { permission: 'payroll.export' }
+              },
+              { path: '', redirectTo: 'documents', pathMatch: 'full' }
+            ]
+          }
+        ]
       },
       {
         path: 'office-settings',
