@@ -56,15 +56,42 @@ export class ShellComponent {
   /**
    * จัดเมนูเป็นกลุ่มตามลำดับใน GROUP_LABELS
    * ข้ามกลุ่มที่ผู้ใช้ไม่มีเมนูเลย เพื่อไม่ให้เห็นหัวข้อว่าง
+   *
+   * UI-04: เมนูที่ไม่มี `group` หรือ `group` ที่ไม่รู้จัก ต้องไปรวมกลุ่มท้ายสุด
+   * ไม่ใช่หายไปเงียบ ๆ
+   *
+   * 6 ต.ค. 2569 backend บน production ยังเป็นโค้ดเก่าที่ไม่ส่ง `group` มา
+   * ทุกกลุ่มจึงว่างแล้วถูกตัดทิ้ง ผู้ใช้ที่มีสิทธิ์ครบ 14 ตัวถูกล็อกออกจากทุกเมนู
+   * และเห็นข้อความว่า "ยังไม่ได้รับสิทธิ์" ซึ่งชี้ผิดทางจนเสียเวลาสืบหลายรอบ
+   *
+   * เงื่อนไขเดียวกันเกิดได้อีกถ้าวันหน้าเพิ่มกลุ่มใหม่ที่ backend แต่ลืมเพิ่มที่นี่
    */
   readonly menuGroups = computed(() => {
     const menus = this.user()?.menus ?? [];
-    return GROUP_LABELS
-      .map(({ key, label }) => ({
-        label,
-        items: menus.filter((item: MenuItem) => item.group === key)
-      }))
-      .filter((group) => group.items.length > 0);
+    const known = new Set<string>(GROUP_LABELS.map(({ key }) => key));
+
+    const groups = GROUP_LABELS.map(({ key, label }) => ({
+      label,
+      items: menus.filter((item: MenuItem) => item.group === key)
+    }));
+
+    const ungrouped = menus.filter((item: MenuItem) => !known.has(String(item.group)));
+    if (ungrouped.length) {
+      groups.push({ label: 'เมนูอื่น', items: ungrouped });
+    }
+
+    return groups.filter((group) => group.items.length > 0);
+  });
+
+  /**
+   * มีเมนูแต่จัดกลุ่มไม่ได้ — แยกจากกรณีไม่มีเมนูเลย
+   *
+   * ใช้เตือนผู้ดูแลว่าเป็นเรื่องเวอร์ชันไม่ตรงกัน ไม่ใช่เรื่องสิทธิ์
+   * ตัวเมนูยังใช้งานได้ปกติเพราะถูกพาไปไว้กลุ่มท้ายสุดแล้ว
+   */
+  readonly hasUngroupedMenus = computed(() => {
+    const known = new Set<string>(GROUP_LABELS.map(({ key }) => key));
+    return (this.user()?.menus ?? []).some((item: MenuItem) => !known.has(String(item.group)));
   });
 
   toggleDrawer(): void {
