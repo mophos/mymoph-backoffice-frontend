@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, inject, input, model, s
 import { OverlayModule } from '@angular/cdk/overlay';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HealthOffice, HealthOfficeService } from '../../../core/services/health-office.service';
+import { HealthOffice, HealthOfficeService, officeReferenceCode } from '../../../core/services/health-office.service';
 
 /**
  * ค้นหาและเลือกหน่วยงานจากทะเบียน 42,991 แห่ง
@@ -11,8 +11,9 @@ import { HealthOffice, HealthOfficeService } from '../../../core/services/health
  * เขียนตามรูปแบบ combobox ของ WAI-ARIA คือ input ถือ aria-activedescendant
  * ชี้ไปยัง option ที่ไฮไลต์อยู่ โดย focus ไม่ย้ายออกจาก input
  *
- * ค่าที่คืนเป็นรายการ code5 เพราะข้อมูลในระบบยังเก็บรหัส 5 หลัก
- * ดู work-list/work-clear-bug-repair/11-HCODE-MIGRATION.md
+ * ค่าที่คืนเป็นรายการ "รหัสอ้างอิง" คือ code5 ถ้ามี ไม่มีก็ hcode9 (H-01)
+ * ตรงกับที่ backend เก็บในคอลัมน์ `hospcode`
+ * ดู work-list/work-hcode9/ และ work-list/work-clear-bug-repair/11-HCODE-MIGRATION.md
  */
 @Component({
   selector: 'app-office-combobox',
@@ -34,8 +35,8 @@ export class OfficeComboboxComponent {
   readonly query = signal('');
   readonly activeIndex = signal(-1);
   /**
-   * ข้อมูลของรหัสที่เลือกไว้ เก็บ hcode9 ด้วยเพื่อแสดงรหัสตามมาตรฐานใหม่
-   * ส่วนค่าที่บันทึกลงฐานยังเป็น code5 จนกว่า migration จะเสร็จ
+   * ข้อมูลของรหัสที่เลือกไว้ คีย์ด้วยรหัสอ้างอิงเดียวกับที่ส่งออกไป
+   * เก็บ hcode9 ไว้ด้วยเพื่อแสดงรหัสตามมาตรฐานใหม่คู่กับชื่อ
    */
   readonly info = signal<Record<string, { name: string; hcode9: string }>>({});
 
@@ -64,12 +65,20 @@ export class OfficeComboboxComponent {
       });
   }
 
-  loadLabelsFor(code5List: string[]): void {
-    if (!code5List.length) return;
-    this.service.resolve({ code5: code5List }).subscribe((rows) => {
+  /**
+   * แปลงรหัสที่บันทึกไว้แล้วให้เป็นชื่อ ใช้ตอนเปิดฟอร์มแก้ไข
+   *
+   * รหัสที่ส่งเข้ามาอาจเป็น code5 หรือ hcode9 ปนกันได้ เพราะขอบเขตของ
+   * หน่วยงานที่ไม่มี code5 ถูกเก็บด้วย hcode9 (H-01)
+   * จึงถามทั้งสองช่องทาง แล้วคีย์ผลลัพธ์ด้วยรหัสอ้างอิงให้ตรงกับที่ส่งออกไป
+   */
+  loadLabelsFor(codes: string[]): void {
+    if (!codes.length) return;
+
+    this.service.resolve({ code5: codes, hcode9: codes }).subscribe((rows) => {
       const map = { ...this.info() };
       rows.forEach((row) => {
-        if (row.code5) map[row.code5] = { name: row.name, hcode9: row.hcode9 };
+        map[officeReferenceCode(row)] = { name: row.name, hcode9: row.hcode9 };
       });
       this.info.set(map);
     });
@@ -109,14 +118,17 @@ export class OfficeComboboxComponent {
   }
 
   pick(office: HealthOffice): void {
-    // หน่วยงานที่ไม่มีรหัส 5 หลักยังเลือกไม่ได้ จนกว่าระบบจะย้ายไป hcode9
-    if (!office.code5) return;
+    // หน่วยงานที่ไม่มี code5 เลือกได้แล้ว โดยใช้ hcode9 เป็นรหัสอ้างอิง (H-01)
+    // เดิมบรรทัดนี้ `return` เงียบ ๆ ผู้ดูแลคลิกแล้วไม่มีอะไรเกิดขึ้น
+    // และไม่มีอะไรบอกว่าทำไม
+    const reference = officeReferenceCode(office);
+    if (!reference) return;
 
-    if (!this.selected().includes(office.code5)) {
-      this.selected.update((list) => [...list, office.code5!]);
+    if (!this.selected().includes(reference)) {
+      this.selected.update((list) => [...list, reference]);
       this.info.update((map) => ({
         ...map,
-        [office.code5!]: { name: office.name, hcode9: office.hcode9 }
+        [reference]: { name: office.name, hcode9: office.hcode9 }
       }));
     }
 

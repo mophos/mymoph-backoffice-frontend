@@ -32,21 +32,22 @@
         role="listbox"
         class="max-h-80 overflow-y-auto rounded-lg border border-(--line) bg-(--surface) py-1 shadow-xl">
       @for (office of options(); track office.hcode9; let i = $index) {
+        <!--
+          H-01: หน่วยงานที่ไม่มีรหัส 5 หลักเลือกได้แล้ว โดยใช้ hcode9 เป็นรหัสอ้างอิง
+          เดิมตัวเลือกถูกทำให้จางและขึ้นว่า "เลือกไม่ได้" ซึ่งไม่จริงอีกต่อไป
+        -->
         <li [id]="optionId(i)"
             role="option"
             [attr.aria-selected]="i === activeIndex()"
-            [attr.aria-disabled]="!office.code5"
             class="cursor-pointer px-3 py-2"
             [class.bg-brand-50]="i === activeIndex()"
-            [class.opacity-50]="!office.code5"
-            [class.cursor-not-allowed]="!office.code5"
             (click)="pick(office)"
             (mouseenter)="activeIndex.set(i)">
           <span class="block leading-snug">{{ office.name }}</span>
           <span class="block text-xs text-(--muted)">
             <span class="font-mono">{{ office.hcode9 }}</span>
             @if (office.province) { · {{ office.province }} }
-            @if (!office.code5) { · ยังไม่มีรหัส 5 หลัก เลือกไม่ได้ }
+            @if (!office.code5) { · ยังไม่มีรหัส 5 หลัก }
           </span>
         </li>
       } @empty {

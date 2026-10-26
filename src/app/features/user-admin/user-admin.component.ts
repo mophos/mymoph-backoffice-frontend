@@ -224,7 +224,8 @@ export class UserAdminComponent {
     }
 
     return offices
-      .map((office) => (office.name ? `${office.name} (${office.hcode9})` : office.code5))
+      // หน่วยงานที่ไม่มี code5 มีจริงในทะเบียน ถ้าตกมาถึง fallback ต้องไม่โชว์คำว่า null
+      .map((office) => (office.name ? `${office.name} (${office.hcode9})` : office.code5 || office.hcode9))
       .join(', ');
   }
 
