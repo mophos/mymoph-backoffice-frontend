@@ -308,8 +308,15 @@ export class TaxYearsComponent {
   private runDeleteYear(year: TaxYearRow): void {
     this.loading.set(true);
     this.taxService.deleteYear(year.id).subscribe({
-      next: () => {
-        this.successMessage.set(`ลบปี พ.ศ. ${year.yearBe} สำเร็จ`);
+      next: (res) => {
+        const failed = res.data?.filesFailed ?? 0;
+        // ลบข้อมูลสำเร็จเสมอถ้ามาถึงตรงนี้ แต่ไฟล์บนดิสก์อาจลบไม่ครบ
+        // ต้องบอกผู้ใช้ ไม่งั้นไฟล์ค้างจะสะสมโดยไม่มีใครรู้ (TAX-16)
+        this.successMessage.set(
+          failed > 0
+            ? `ลบปี พ.ศ. ${year.yearBe} สำเร็จ แต่ลบไฟล์บนเซิร์ฟเวอร์ไม่สำเร็จ ${failed} ไฟล์ กรุณาแจ้งผู้ดูแลระบบ`
+            : `ลบปี พ.ศ. ${year.yearBe} สำเร็จ`
+        );
         this.load();
       },
       error: (error) => {

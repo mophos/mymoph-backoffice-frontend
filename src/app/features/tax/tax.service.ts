@@ -86,6 +86,22 @@ export interface BatchUploadPreviewRow {
   fileName: string;
 }
 
+/**
+ * ผลการลบที่ backend ส่งกลับมา — TAX-02 / TAX-16
+ *
+ * การลบไฟล์ไม่ทำให้คำขอล้มเหลวอีกแล้ว แต่ถ้าลบไฟล์ไม่สำเร็จต้องบอกผู้ใช้
+ * ไม่งั้นจะเหลือไฟล์ค้างบนดิสก์โดยไม่มีใครรู้ ซึ่งเป็นที่มาของไฟล์ค้าง 2,072 ไฟล์
+ */
+export interface DeleteYearResult {
+  documentsDeleted: number;
+  filesRemoved: number;
+  filesFailed: number;
+}
+
+export interface DeleteDocumentResult {
+  fileRemoved: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 /*
  * endpoint ที่ backend มีแต่ฝั่งหน้าเว็บไม่เรียก จึงไม่ประกาศเมธอดไว้ที่นี่
@@ -121,8 +137,8 @@ export class TaxService {
     });
   }
 
-  deleteYear(id: number): Observable<ApiEnvelope<unknown>> {
-    return this.http.delete<ApiEnvelope<unknown>>(`${API_BASE_URL}/tax/years/${id}`, {
+  deleteYear(id: number): Observable<ApiEnvelope<DeleteYearResult>> {
+    return this.http.delete<ApiEnvelope<DeleteYearResult>>(`${API_BASE_URL}/tax/years/${id}`, {
       withCredentials: true
     });
   }
@@ -282,8 +298,8 @@ export class TaxService {
     );
   }
 
-  deleteDocument(id: string): Observable<ApiEnvelope<unknown>> {
-    return this.http.delete<ApiEnvelope<unknown>>(`${API_BASE_URL}/tax/documents/${id}`, {
+  deleteDocument(id: string): Observable<ApiEnvelope<DeleteDocumentResult>> {
+    return this.http.delete<ApiEnvelope<DeleteDocumentResult>>(`${API_BASE_URL}/tax/documents/${id}`, {
       withCredentials: true
     });
   }
